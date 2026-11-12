@@ -99,7 +99,7 @@ el('review-form').onsubmit = async (e) => {
     if (el('method').value === 'rubric') {
       result = rubricReview(text);
     } else if (el('method').value === 'device') {
-      const { deviceReview } = await import('./device-model.js?v=22r2');
+      const { deviceReview } = await import('./device-model.js?v=22r3');
       result = await deviceReview(text, {
         signal: controller.signal,
         status: (s) => {

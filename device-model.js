@@ -58,7 +58,7 @@ async function initialise(status, signal) {
     'single-thread/wllama.wasm': new URL('./vendor/wllama.wasm', import.meta.url).href,
   });
   try {
-    await instance.loadModel([new Blob(chunks)], { n_ctx: 3072, n_batch: 128, n_threads: 1 });
+    await instance.loadModel([new Blob(chunks)], { n_ctx: 8192, n_batch: 128, n_threads: 1 });
   } catch {
     throw Error('这台设备未能载入模型，可改用云端或电脑验收版。');
   }
@@ -112,13 +112,15 @@ fourth ::= "20" | "1" [0-9] | [0-9]
 remark ::= [^|\r\n]{5,35}`;
 
 export async function deviceReview(text, { signal, status }) {
-  if (text.length > 2200) throw Error('设备模型单次可评 40～2200 字。请选取段落，或使用云端模型。');
+  if (text.length > 9000) throw Error('请提交 40～9000 字的正文。');
   const llm = await ready(status, signal);
   signal?.throwIfAborted();
   status('通义千问正在阅读正文…');
   const instruction =
     '你是课程教师。依次评价理论理解（30分）、文本依据（25分）、联系实际（25分）、结构表达（20分）。每行只写整数分数、竖线和一句精简中文评语。评语引用本文的内容。没有所读原文的举证，应扣文本依据分。只写四行。';
-  const result = await llm.createCompletion(prompt(instruction, text), {
+  const input = prompt(instruction, text);
+  if ((await llm.tokenize(input, true)).length + 480 > 8192) throw Error('正文超过设备模型的上下文容量，请分段或使用云端评阅。');
+  const result = await llm.createCompletion(input, {
     abortSignal: signal,
     nPredict: 480,
     sampling: { temp: 0.2, grammar: gradingGrammar },
