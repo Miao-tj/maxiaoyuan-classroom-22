@@ -71,8 +71,13 @@ function remember(a) {
   current = a;
   localStorage.setItem(store, JSON.stringify(accounts));
 }
+let latestRead = 0;
 async function refresh() {
-  room = await api('state');
+  const request = ++latestRead;
+  const owner = current?.token;
+  const snapshot = await api('state');
+  if (request !== latestRead || owner !== current?.token) return;
+  room = snapshot;
   render();
 }
 function pop(title, s) {
@@ -287,7 +292,7 @@ function render() {
     '</h1><span class="tag">' +
     (isTeacher() ? '课程创建者' : '学生') +
     '</span><i class="spacer"></i>' +
-    b('account', '课程与身份') +
+    b('refresh', '刷新') + b('account', '课程与身份') +
     '</div><nav class="tabs">' +
     tabs.map(([id, l]) => b('tab', l, id, tab === id ? 'active' : '')).join('') +
     '</nav>' +
@@ -295,9 +300,11 @@ function render() {
 }
 const actions = {
   close: () => dialog.close(),
-  tab: (v) => {
+  refresh,
+  tab: async (v) => {
     tab = v;
     render();
+    await refresh();
   },
   invite: async () => {
     const url = new URL('classroom.html', location.href);
