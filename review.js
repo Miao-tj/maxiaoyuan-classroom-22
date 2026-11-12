@@ -1,6 +1,6 @@
 import {unzipSync,strFromU8} from './vendor/fflate.js';
 import {rubricReview} from './rubric.js';
-import {apiFetch} from './gateway.js';
+import {apiFetch,cloud,mirror} from './gateway.js';
 import {esc} from './ui.js';
 const el=id=>document.getElementById(id);
 let run=0,controller,reading=false;
@@ -20,7 +20,7 @@ el('review-form').onsubmit=async e=>{e.preventDefault();const text=el('essay').v
  try{let result;if(el('method').value==='rubric'){result=rubricReview(text);}else if(el('method').value==='device'){const {deviceReview}=await import('./device-model.js');result=await deviceReview(text,{signal:controller.signal,status:s=>{if(id===run)el('status').textContent=s;}});}else{const response=await apiFetch('review',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});result=await response.json();if(!response.ok)throw Error(result.error||'评阅失败，请重试。');}if(id!==run)return;
  el('status').textContent='评语已返回，正在逐项展示。';for(const [i,d] of result.dimensions.entries()){await pause(i===0?400:1050);if(id!==run)return;const section=document.createElement('section');section.className='dimension';section.innerHTML='<div class="dim-head"><h3>'+esc(d.name)+'</h3><span class="dim-score">'+d.score+' / '+d.max+'</span></div><p>'+esc(d.comment)+'</p>';el('dimensions').append(section);document.querySelectorAll('.reading-track i')[i].className='shown';el('reading-label').textContent='已评阅 '+(i+1)+' / 4　'+d.name;}
  await pause(1000);if(id!==run)return;el('total').textContent=result.total;document.querySelector('.grade').hidden=false;document.querySelector('.review-summary p').textContent=result.summary;document.querySelector('.review-summary').hidden=false;el('reading-label').textContent='四项评阅完成';el('status').textContent=(result.method||'大模型')+'建议评分，供教师复核。';el('report').classList.remove('presenting');
- }catch(error){if(id===run){el('status').textContent=error.message+' 可选课程量规初评，或稍后重试模型。';el('report').hidden=true;}}finally{if(id===run)el('submit').disabled=false;}};
+ }catch(error){if(id===run){el('status').textContent=error.message+' 可选设备模型或课程量规。';if(mirror){const a=document.createElement('a');a.href=cloud+'assignment-review.html';a.textContent='　打开云端评阅 ↗';el('status').append(a);}el('report').hidden=true;}}finally{if(id===run)el('submit').disabled=false;}};
 let modelInfo='云端模型';function methodHint(){el('provider').textContent=el('method').value==='rubric'?'按十二项量规识别文字特征，全文留在本设备。':el('method').value==='device'?'首次从魔搭下载约 429 MB 模型；正文留在本设备。':'提交后，正文由 '+modelInfo+' 处理。原始 Word 文件保留在本设备。';}el('method').onchange=()=>{clear();methodHint();el('status').textContent='';};
 apiFetch('status').then(r=>r.json()).then(p=>{modelInfo=p.host+' 的 '+p.label;methodHint();}).catch(()=>{});
 

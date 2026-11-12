@@ -1,4 +1,4 @@
-import {apiFetch} from './gateway.js';
+import {apiFetch,cloud,mirror} from './gateway.js';
 import course from './content.js';
 import {avatar,esc as h,icon} from './ui.js';
 import {createWorkspaceIntro} from './workspace-intro.js';
@@ -23,7 +23,7 @@ function layout(){
  const navLinks=nav.map(([id,name,i])=>link(id,icon(i)+'<span>'+name+'</span>',route()===id||(route()==='reader'&&id==='library')?'on':'')).join('');
  return '<header class="top"><a class="brand" href="#chat"><span class="book"></span><span><b>马小原</b><small>课程学习工作台</small></span></a><span class="course">马克思主义基本原理</span><i class="spacer"></i><a href="./classroom.html" class="btn mobile-only">班级</a><a href="./assignment-review.html" class="btn outline">作业评阅</a>'+action('share','扫码进入','','bare')+'</header><div class="shell"><nav class="rail" aria-label="主导航">'+navLinks+'<a href="./classroom.html">'+icon('users')+' 班级课堂</a><div class="rail-foot">'+action('settings',icon('settings')+' 设置与隐私')+'</div></nav><main class="workspace" id="main"></main></div><nav class="live-mobile" aria-label="移动导航">'+navLinks+'</nav>';
 }
-function turnView(t,i){return '<div class="user-turn"><div class="bubble">'+h(t.q)+'</div></div><article class="response">'+avatar+'<div class="answer"><strong>马小原</strong><p class="answer-text">'+h(t.a||'正在连接模型…')+'</p>'+(t.error?'<p class="error">'+h(t.error)+'</p>':'')+(t.source?'<div>'+action('open-source',icon('book')+' '+h(t.source.title),t.source.id,'tag')+'</div>':'')+'<div class="actions">'+(t.a?action('save-answer','收藏到笔记',i):'')+action('retry','编辑并重发',i)+'</div></div></article>';}
+function turnView(t,i){return '<div class="user-turn"><div class="bubble">'+h(t.q)+'</div></div><article class="response">'+avatar+'<div class="answer"><strong>马小原</strong><p class="answer-text">'+h(t.a||'正在连接模型…')+'</p>'+(t.error?'<p class="error">'+h(t.error)+(mirror?'　<a class="btn outline" href="'+cloud+'">打开云端课堂 ↗</a>':'')+'</p>':'')+(t.source?'<div>'+action('open-source',icon('book')+' '+h(t.source.title),t.source.id,'tag')+'</div>':'')+'<div class="actions">'+(t.a?action('save-answer','收藏到笔记',i):'')+action('retry','编辑并重发',i)+'</div></div></article>';}
 function chat(){
  const current=thread(),waiting=busy?.thread===current.id;
  const history='<aside class="history">'+action('new','＋ 新建对话','','outline stretch')+'<h3>最近对话</h3>'+data.threads.map(t=>action('switch',icon('chat')+'　'+h(t.turns[0]?.q.slice(0,16)||'新对话'),t.id,'entry '+(t.id===current.id?'selected':''))).join('')+'</aside>';
