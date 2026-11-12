@@ -331,6 +331,67 @@ function practice() {
       '</form></article>',
   );
 }
+function knowledgeRadar() {
+  const axes = course.chapters.map((chapter) => {
+    const answers = chapter.questions.map((q) => data.answers[q.id]).filter(Boolean);
+    const right = answers.filter((a) => a.correct).length;
+    return {
+      title: chapter.title,
+      count: answers.length,
+      right,
+      ratio: answers.length ? right / answers.length : null,
+    };
+  });
+  const point = (i, radius) => {
+    const angle = (2 * Math.PI * i) / axes.length - Math.PI / 2;
+    return [130 + Math.cos(angle) * radius, 104 + Math.sin(angle) * radius];
+  };
+  const ring = (radius) => axes.map((_, i) => point(i, radius).join(',')).join(' ');
+  const grid = [20, 40, 60, 80]
+    .map((r) => '<polygon points="' + ring(r) + '" fill="none" stroke="#ded8ef"/>')
+    .join('');
+  const marks = axes
+    .map((axis, i) => {
+      const [x, y] = point(i, 80);
+      const [lx, ly] = point(i, 98);
+      const line = '<path d="M130 104 L' + x + ' ' + y + '" stroke="#ded8ef"/>';
+      const label =
+        '<text x="' +
+        lx +
+        '" y="' +
+        (ly + 5) +
+        '" text-anchor="middle" fill="#635b73" font-size="10">' +
+        h(axis.title) +
+        '</text>';
+      if (axis.ratio === null) return line + label;
+      const [cx, cy] = point(i, 80 * axis.ratio);
+      return line + label + '<circle cx="' + cx + '" cy="' + cy + '" r="4" fill="#784bd2"/>';
+    })
+    .join('');
+  const polygon = axes.every((a) => a.ratio !== null)
+    ? '<polygon points="' +
+      axes.map((a, i) => point(i, 80 * a.ratio).join(',')).join(' ') +
+      '" fill="#a990e94d" stroke="#784bd2"/>'
+    : '';
+  return (
+    '<section class="card segment"><h2>知识雷达</h2><div class="learning-radar"><svg viewBox="0 0 260 177" role="img" aria-label="各章已作答题目的正确率，未作答的轴留空">' +
+    grid +
+    polygon +
+    marks +
+    '</svg><div>' +
+    axes
+      .map(
+        (a) =>
+          '<p><strong>' +
+          h(a.title) +
+          '</strong><span>' +
+          (a.ratio === null ? '待评估' : a.right + ' / ' + a.count + ' 答对') +
+          '</span></p>',
+      )
+      .join('') +
+    '</div></div></section>'
+  );
+}
 function progress() {
   const a = Object.values(data.answers),
     correct = a.filter((x) => x.correct).length;
@@ -344,7 +405,9 @@ function progress() {
       ]
         .map(([k, v]) => '<div class="card"><small>' + k + '</small><h2>' + v + '</h2></div>')
         .join('') +
-      '</div><section class="card segment"><h2>章节掌握情况</h2>' +
+      '</div>' +
+      knowledgeRadar() +
+      '<section class="card segment"><h2>章节掌握情况</h2>' +
       questions
         .map(
           (q, i) =>

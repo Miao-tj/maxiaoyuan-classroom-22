@@ -233,3 +233,34 @@
     animation: none !important;
   }
 }
+.learning-radar {
+  display: grid;
+  grid-template-columns: minmax(160px, 300px) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.2rem;
+}
+.learning-radar svg {
+  width: 100%;
+  max-height: 215px;
+}
+.learning-radar p {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7em;
+  padding: 0.5em 0;
+  border-bottom: 1px solid var(--line);
+}
+.learning-radar p span {
+  color: var(--deep);
+}
+@media (max-width: 580px) {
+  .learning-radar {
+    grid-template-columns: 1fr;
+  }
+  .learning-radar svg {
+    max-height: 160px;
+  }
+  .learning-radar p {
+    margin: 0;
+  }
+}

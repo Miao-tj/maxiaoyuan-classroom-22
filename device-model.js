@@ -105,38 +105,40 @@ export async function deviceChat(text, source, history, { signal, status, update
 }
 const labels = ['理论理解', '文本依据', '联系实际', '结构与表达'],
   maxima = [30, 25, 25, 20];
-const grammar = String.raw`root ::= "{" ws "\"dimensions\"" ws ":" ws "[" ws first ws "," ws second ws "," ws second ws "," ws fourth ws "]" ws "," ws "\"summary\"" ws ":" ws str ws "}"
-first ::= open ("30" | [12] [0-9] | [0-9]) comment
-second ::= open ("2" [0-5] | "1" [0-9] | [0-9]) comment
-fourth ::= open ("20" | "1" [0-9] | [0-9]) comment
-open ::= "{" ws "\"score\"" ws ":" ws
-comment ::= ws "," ws "\"comment\"" ws ":" ws str ws "}"
-str ::= "\"" [^"\\\x00-\x1f]+ "\""
-ws ::= [ \t\n\r]*`;
+const gradingGrammar = String.raw`root ::= first "|" remark "\n" second "|" remark "\n" second "|" remark "\n" fourth "|" remark "\n"
+first ::= "30" | [12] [0-9] | [0-9]
+second ::= "2" [0-5] | "1" [0-9] | [0-9]
+fourth ::= "20" | "1" [0-9] | [0-9]
+remark ::= [^|\r\n]{5,35}`;
+
 export async function deviceReview(text, { signal, status }) {
   if (text.length > 2200) throw Error('设备模型单次可评 40～2200 字。请选取段落，或使用云端模型。');
   const llm = await ready(status, signal);
   signal?.throwIfAborted();
   status('通义千问正在阅读正文…');
-  const result = await llm.createCompletion(
-    prompt(
-      '你是一位严谨的课程教师。按理论理解30分、文本依据25分、联系实际25分、结构表达20分评阅。四项各写一句具体中文评语，说明扣分理由。缺乏引文的文章不得给文本依据满分。最后写一句总评。输出JSON。',
-      text,
-    ),
-    { abortSignal: signal, nPredict: 560, sampling: { temp: 0.2, grammar } },
-  );
-  let data;
-  try {
-    data = JSON.parse(result.trim());
-  } catch {
-    throw Error('设备模型未完成全部评语，请缩短正文再试。');
-  }
-  if (data.dimensions?.length !== 4 || !data.summary) throw Error('评阅结果不完整，请重试。');
-  const dimensions = data.dimensions.map((d, i) => ({ ...d, name: labels[i], max: maxima[i] }));
+  const instruction =
+    '你是课程教师。依次评价理论理解（30分）、文本依据（25分）、联系实际（25分）、结构表达（20分）。每行只写整数分数、竖线和一句精简中文评语。评语引用本文的内容。没有所读原文的举证，应扣文本依据分。只写四行。';
+  const result = await llm.createCompletion(prompt(instruction, text), {
+    abortSignal: signal,
+    nPredict: 480,
+    sampling: { temp: 0.2, grammar: gradingGrammar },
+    onNewToken: (_id, _piece, answer) => {
+      const finished = answer.split('\n').length - 1;
+      if (finished > 0 && finished < 4) status('通义千问已分析 ' + finished + ' / 4 项…');
+    },
+  });
+  const rows = result.trim().split(/\r?\n/);
+  if (rows.length !== 4) throw Error('设备模型没有完成四项评语，请重试。');
+  const dimensions = rows.map((row, i) => {
+    const match = /^(\d{1,2})\|(.+)$/.exec(row.trim());
+    if (!match || Number(match[1]) > maxima[i]) throw Error('模型给分超出量规，请重试。');
+    return { name: labels[i], max: maxima[i], score: Number(match[1]), comment: match[2].trim() };
+  });
+  const weakest = dimensions.reduce((a, b) => (a.score / a.max <= b.score / b.max ? a : b));
   return {
     dimensions,
     total: dimensions.reduce((sum, d) => sum + d.score, 0),
-    summary: data.summary,
+    summary: '可优先复核「' + weakest.name + '」。' + weakest.comment,
     method: '设备模型',
   };
 }
