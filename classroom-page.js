@@ -1,3 +1,6 @@
+import {createTeacherBank} from './teacher-bank.js';
+import {createLogin} from './account-panel.js';
+import {createDashboard} from './teacher-overview.js';
 import { createProjects } from './class-projects.js';
 import { createMaterials } from './class-materials.js';
 import { esc as h, icon } from './ui.js';
@@ -98,10 +101,10 @@ function pop(title, s) {
 }
 function entry() {
   root.innerHTML =
-    '<h1>进入班级课堂</h1><p>教师创建课程后，将邀请码发给本班学生。</p><div class="class-columns"><section class="card"><h2>加入课程</h2><form data-op="join">' +
+    '<div class="identity-shell">'+login.panel()+'<aside class="identity-preview"><h2>当前课程</h2><div class="td-login-course"><img src="./assets/companion-awake.webp" alt="马小原"><div><h3>马克思主义基本原理</h3><span>课程学习工作台</span></div></div><nav class="td-login-links"><a href="./#library">阅读课程资料</a><a href="./#chat">与马小原讨论</a><a href="./#exercises">完成章节练习</a></nav><p>你的私人对话与笔记仅自己可见。</p></aside></div><div class="class-columns"><section class="card"><h2>加入课程</h2><form data-op="join">' +
     input('invite', '课程邀请码', shared, 16) +
     input('alias', '课堂称呼（可用昵称）', '', 32) +
-    submit('以学生身份加入') +
+    '<label class="permission"><input name="stats" type="checkbox"> 允许教师在班级学情中查看我的首答记录</label>'+submit('以学生身份加入') +
     '</form></section><section class="card"><h2>创建课程</h2><form data-op="create">' +
     input('title', '课程名称', '', '70') +
     submit('创建教师工作台') +
@@ -145,124 +148,37 @@ function overview() {
     '</section>'
   );
 }
-const sample = [
-  {
-    prompt: '检验认识真理性的唯一标准是什么？',
-    options: ['实践', '多数人的意见', '现有理论'],
-    correct: 0,
-    why: '认识是否符合实际，要通过实践及其结果来检验。',
-  },
-];
-function questionForm(q) {
-  return (
-    '<form data-op="' +
-    (q ? 'edit' : 'question') +
-    '" data-id="' +
-    h(q?.id || '') +
-    '">' +
-    area('prompt', '题干', q?.prompt || '', 700) +
-    area('options', '选项（每行一个）', q?.options.join('\n') || '', 1300) +
-    input('answer', '正确选项序号（从 1 开始）', q ? String(q.correct + 1) : '1', 1) +
-    area('why', '解析', q?.why || '', 900) +
-    submit('保存题目') +
-    '</form>'
-  );
+let assignment='';
+function questionList(){
+ if(isTeacher())return bank.render();
+ const group=room.assignments.find(g=>g.id===assignment);
+ const list=room.questions.filter(q=>!group||group.questions.includes(q.id));
+ return '<header class="project-head"><h1>课堂练习</h1></header><nav class="project-tabs">'+b('assignment','全部题目','',!group?'active':'')+room.assignments.map(x=>b('assignment',h(x.title),x.id,x.id===assignment?'active':'')).join('')+'</nav>'+(!list.length?'<section class="card"><p>本班暂未发布题目。</p></section>':'')+list.map((q,i)=>{
+ const answered=q.choice!=null,multi=q.type==='multi',selected=q.choices?.length?q.choices:[q.choice];
+ return '<article class="card segment"><small>第 '+(i+1)+' 题 · '+(multi?'多选':q.type==='judge'?'判断':'单选')+' · '+h(q.module||'课程练习')+'</small><h2>'+h(q.prompt)+'</h2><form data-op="answer" data-id="'+h(q.id)+'">'+q.options.map((o,k)=>'<label class="option"><input type="'+(multi?'checkbox':'radio')+'" name="choice" value="'+k+'" '+(answered?'disabled ':'')+(selected.includes(k)?'checked ':'')+(!multi?'required ':'')+'>'+h(o)+'</label>').join('')+(answered?'<div class="callout"><b>'+(q.right?'回答正确':'需要复习')+'</b><p>'+h(q.why)+'</p></div>':submit('提交首答'))+'</form></article>';}).join('');
 }
-function questionList() {
-  return (
-    (isTeacher()
-      ? '<div class="row">' +
-        b('new-question', '＋ 新建题目', '', 'primary') +
-        b('import', '批量导入') +
-        '</div>'
-      : '') +
-    (!room.questions.length ? '<p>题库中还没有题目。</p>' : '') +
-    room.questions
-      .map(
-        (q, i) =>
-          '<article class="card segment"><small>第 ' +
-          (i + 1) +
-          ' 题 · 单选</small><h2>' +
-          h(q.prompt) +
-          '</h2>' +
-          (isTeacher()
-            ? q.options
-                .map((o, i) => '<p>' + (i === q.correct ? '✓　' : '　　') + h(o) + '</p>')
-                .join('') +
-              '<p>' +
-              h(q.why) +
-              '</p>' +
-              b('edit', '编辑题目', q.id)
-            : '<form data-op="answer" data-id="' +
-              h(q.id) +
-              '">' +
-              q.options
-                .map(
-                  (o, i) =>
-                    '<label class="option"><input type="radio" name="choice" value="' +
-                    i +
-                    '" ' +
-                    (q.choice === i ? 'checked' : '') +
-                    (q.choice != null ? ' disabled' : '') +
-                    ' required>' +
-                    h(o) +
-                    '</label>',
-                )
-                .join('') +
-              (q.choice != null
-                ? '<div class="callout"><b>' +
-                  (q.right ? '回答正确' : '需要复习') +
-                  '</b><p>' +
-                  h(q.why) +
-                  '</p></div>'
-                : submit('提交首答')) +
-              '</form>') +
-          '</article>',
-      )
-      .join('')
-  );
-}
-function students() {
-  return (
-    '<div class="card"><h2>班级学情</h2><p>按每道课堂题目的首次提交统计。</p><table><thead><tr><th>课堂称呼</th><th>已答</th><th>答对</th><th>正确率</th></tr></thead><tbody>' +
-    room.students
-      .map(
-        (s) =>
-          '<tr><td>' +
-          h(s.alias) +
-          '</td><td>' +
-          s.answered +
-          '</td><td>' +
-          s.correct +
-          '</td><td>' +
-          (s.answered ? Math.round((100 * s.correct) / s.answered) + '%' : '待评估') +
-          '</td></tr>',
-      )
-      .join('') +
-    '</tbody></table>' +
-    (!room.students.length ? '<p>尚无学生加入。</p>' : '') +
-    '</div>'
-  );
-}
+function switchCourse(i){remember(accounts[i]);tab='overview';assignment='';return refresh();}
 const ctx = {
   room: () => room,
   token: () => current?.token,
   api,
   refresh,
-  redraw: render,
+  redraw: render, accounts:()=>accounts, remember, switch:switchCourse,
+  reentry:()=>{if(!room)entry();},dropManaged:()=>{accounts=accounts.filter(a=>!a.managed);localStorage.setItem(store,JSON.stringify(accounts));current=null;room=null;},
+  todo:async(id,options={})=>{if(!tabInfo().some(x=>x[0]===id))return show('当前课程身份未获得此权限。');tab=id;if(id==='questions')bank.open(options.intent==='list'?'list':'draft');history.replaceState(null,'','#'+tab);await refresh();},
   notice: show,
   pop,
   close: () => dialog.close(),
 };
 const projects = createProjects(ctx),
-  library = createMaterials(ctx);
+  library = createMaterials(ctx), login=createLogin(ctx), dashboard=createDashboard(ctx), bank=createTeacherBank(ctx);
 const tabInfo = () => [
   ['overview', isTeacher() ? '教学概览' : '课程概览', 'home'],
   ['materials', isTeacher() ? '课程资料' : '课程学习', 'book'],
   ['questions', isTeacher() ? '题库管理' : '题库练习', 'edit'],
   ['works', isTeacher() ? '成果审核' : '小组成果', 'users'],
   ...(isTeacher() ? [['students', '班级学情', 'chart']] : []),
-];
+].filter(([page])=>!isTeacher()||page==='overview'||((room.rights??15)&({materials:1,questions:2,students:4,works:8}[page])));
 function render() {
   if (!tabInfo().some(([id]) => id === tab)) tab = 'overview';
   root.innerHTML =
@@ -282,18 +198,22 @@ function render() {
     b('refresh', '刷新') +
     '</div>' +
     {
-      overview,
+      overview:()=>isTeacher()?dashboard.render('overview'):overview(),
       materials: library.render,
       questions: questionList,
       works: projects.render,
-      students,
+      students:()=>dashboard.render('students'),
     }[tab]() +
     '</section></div>';
+  if (isTeacher()&&['students','overview'].includes(tab))dashboard.hydrate();
+  if(isTeacher()&&tab==='questions')bank.hydrate();
   if (tab === 'works') projects.hydrate();
   if (tab === 'materials') library.hydrate();
 }
 const actions = {
   close: () => dialog.close(),
+  assignment:v=>{assignment=v;render();},
+  'stats-consent':async()=>{await api('stats-consent',{allowed:!room.statsConsent});dialog.close();await refresh();show('已更新学情授权。');},
   refresh,
   tab: async (v) => {
     tab = v;
@@ -321,7 +241,7 @@ const actions = {
       '<p>将个人访问码保存在自己的设备上，可在另一台设备恢复同一身份。</p>' +
         b('reveal', '查看我的访问码') +
         ' ' +
-        b('entry', '切换或加入其他班级'),
+        b('entry', '账号登录与课程切换')+(!isTeacher()?' '+b('stats-consent',room.statsConsent?'关闭我的学情授权':'授权教师查看我的学情'):''),
     ),
   reveal: () =>
     pop(
@@ -333,37 +253,21 @@ const actions = {
     room = null;
     entry();
   },
-  'new-material': () =>
-    pop(
-      '发布讲义',
-      '<form data-op="material">' +
-        input('title', '讲义名称') +
-        area('body', '讲义正文', '', 7000) +
-        submit('发布到本班') +
-        '</form>',
-    ),
-  'new-question': () => pop('新建题目', questionForm()),
-  edit: (id) => pop('编辑题目', questionForm(room.questions.find((q) => q.id === id))),
-  import: () =>
-    pop(
-      '导入题目',
-      '<form data-op="import"><p>使用 JSON 数组，correct 从 0 开始。全部题目通过校验后统一写入。</p>' +
-        area('json', '题目 JSON', JSON.stringify(sample, null, 2), 18000) +
-        submit('校验并导入') +
-        '</form>',
-    ),
+
 };
 document.addEventListener('click', async (e) => {
   const p = e.target.closest('[data-project]'),
     m = e.target.closest('[data-material]');
   try {
     if (p) await projects.click(p.dataset.project, p.dataset.value);
-    if (m) library.click(m.dataset.material, m.dataset.value);
+    const acct=e.target.closest('[data-account]'),dash=e.target.closest('[data-dash]');if(acct)await login.click(acct);if(dash)await dashboard.click(dash);
+    if (m) await library.click(m.dataset.material, m.dataset.value);
   } catch (err) {
     show(err.message);
   }
 });
 document.addEventListener('input', (e) => {
+  if(e.target.matches('[data-dash-search]'))dashboard.changes(e.target);
   if (e.target.matches('[data-material-search]')) library.search(e.target.value);
   if (
     e.target.matches(
@@ -373,14 +277,16 @@ document.addEventListener('input', (e) => {
     projects.edit(e).catch((err) => show(err.message));
 });
 document.addEventListener('change', (e) => {
+  if(e.target.matches('[data-dash-days],[data-dash-room],[data-dash-status]'))Promise.resolve(dashboard.changes(e.target)).catch(err=>show(err.message));
   if (
     e.target.matches(
-      '[data-sort],[data-filtertype],[data-project-form=editor] input[type=checkbox],[data-file]',
+      '[data-sort],[data-topic],[data-filtertype],[data-project-form=editor] select,[data-project-form=editor] input[type=checkbox],[data-file]',
     )
   )
     projects.edit(e).catch((err) => show(err.message));
 });
 document.addEventListener('submit', (e) => {
+  if(e.target.matches('[data-auth]')){e.preventDefault();const f=e.target,b=f.querySelector('button.primary,button:last-child');if(b.disabled)return;b.disabled=true;login.submit(f).catch(err=>{show(err.message);let n=f.querySelector('[role=alert]');if(!n){n=document.createElement('p');n.setAttribute('role','alert');f.append(n);}n.textContent=err.message;}).finally(()=>b.disabled=false);return;}
   if (e.target.matches('[data-project-form]'))
     projects.send(e).catch((err) => {
       show(err.message);
@@ -425,35 +331,15 @@ document.addEventListener('submit', async (e) => {
       return;
     }
     if (op === 'create' || op === 'join') {
-      const a = await api(op, body);
+      body.stats=body.stats==='on';const a = await api(op, body);
+      await login.link(a.token);
       remember(a);
       if (!['materials', 'works'].includes(tab)) tab = 'overview';
       history.replaceState({}, '', location.pathname + '#' + tab);
       await refresh();
       return;
     }
-    if (op === 'question' || op === 'edit') {
-      const q = {
-        prompt: body.prompt,
-        options: body.options
-          .split(/\r?\n/)
-          .map((v) => v.trim())
-          .filter(Boolean),
-        why: body.why,
-        correct: Number(body.answer) - 1,
-      };
-      if (op === 'edit') body = { ...q, id: f.dataset.id };
-      else {
-        op = 'import';
-        body = { questions: [q] };
-      }
-    } else if (op === 'import') {
-      try {
-        body = { questions: JSON.parse(body.json) };
-      } catch {
-        throw Error('JSON 格式有误，请检查括号和引号。');
-      }
-    } else if (op === 'answer') body = { id: f.dataset.id, choice: Number(body.choice) };
+    if(op==='answer'){const values=new FormData(f).getAll('choice').map(Number);if(!values.length)throw Error('请选择答案。');body={id:f.dataset.id,choice:values[0],choices:values};}
     await api(op, body);
     dialog.close();
     await refresh();
@@ -474,9 +360,13 @@ document.addEventListener('submit', async (e) => {
     button.disabled = false;
   }
 });
-if (current && !shared) {
-  refresh().catch((e) => {
+if (current && !shared && location.hash!=='#login') {
+  refresh().then(()=>{if(location.hash==='#permissions')actions.account();}).catch((e) => {
     entry();
     show(e.message);
   });
 } else entry();
+
+login.init();
+
+try{document.body.classList.toggle('reduce',!!JSON.parse(localStorage.getItem('maxiaoyuan-live-22')||'{}').reduce);}catch{}

@@ -1,3 +1,4 @@
+import {restoreTurnExtras,restoreAnswer,restoreNoteExtras,restoreStudyState,mergeStudyState} from './study-backup.js';
 import { icon } from './ui.js';
 const name = 'maxiaoyuan-learning',
   validId = (v) =>
@@ -8,6 +9,7 @@ const bounded = (v, max) => typeof v === 'string' && v.length <= max;
 export function learningBackup(data) {
   return {
     format: name,
+    study24:data.study24,
     version: 1,
     threads: data.threads.map((t) => ({ ...t, draft: data.keepDraft === false ? '' : t.draft })),
     notes: data.notes,
@@ -44,6 +46,7 @@ export function inspectBackup(text, questions, chapterIds) {
     if (bounded(n.tags, 120)) note.tags = n.tags;
     if (validId(n.source?.id) && Number.isInteger(n.source.page) && n.source.page > 0)
       note.source = { id: n.source.id, page: n.source.page };
+    Object.assign(note,restoreNoteExtras(n));
     return note;
   });
   const threads = v.threads.map((t) => {
@@ -66,6 +69,7 @@ export function inspectBackup(text, questions, chapterIds) {
           ...(x.source && validId(x.source.id) && bounded(x.source.title, 200)
             ? { source: { id: x.source.id, title: x.source.title } }
             : {}),
+          ...restoreTurnExtras(x),
         };
       }),
     };
@@ -74,10 +78,10 @@ export function inspectBackup(text, questions, chapterIds) {
     answers = {};
   for (const [id, a] of Object.entries(v.answers)) {
     const q = ids.get(id);
-    if (q && q.options.some((o) => o.id === a?.choice))
-      answers[id] = { choice: a.choice, correct: q.answerKeys.includes(a.choice) };
+    const item=q&&restoreAnswer(q,a);if(item)answers[id]=item;
   }
   return {
+    study24:restoreStudyState(v.study24,questions),
     notes,
     threads,
     answers,
@@ -99,6 +103,7 @@ export function mergeBackup(current, incoming) {
   };
   return {
     ...current,
+    study24:mergeStudyState(current.study24,incoming.study24,current.answers),
     notes: unique(current.notes, incoming.notes),
     threads: unique(current.threads, incoming.threads),
     answers: { ...incoming.answers, ...current.answers },
@@ -123,7 +128,7 @@ export function settingsPage(data, action) {
     row('个人笔记', '仅自己可见', '笔记保存至本站的当前浏览器。') +
     '</article><article class="card"><h3>教师可见范围</h3>' +
     row('私人聊天与笔记', '未共享', '教师不能通过班级课堂读取。') +
-    row('班级作答和作品', '按课程身份', '教师可查看本班提交记录和作者授权范围。') +
+    row('班级作答和作品', '按课程身份', '班级学情仅包含同意授权的首答记录，作品按各成员选择的范围展示。') + '<a class="btn" href="./classroom.html#permissions">查看我的课程授权</a>' +
     '</article><article class="card"><h3>学习记录来源</h3><div class="privacy-sources"><p><b>在线课程记录</b><br>本班讲义、首答与作品保存在云端。<br><a class="btn" href="./classroom.html">查看班级课堂</a></p><p><b>本机学习记录</b><br>' +
     data.notes.length +
     ' 条笔记 · ' +
@@ -139,7 +144,7 @@ export function settingsPage(data, action) {
     ' ' +
     action('intro', '重播开场动画') +
     '</article><article class="card"><h3>数据管理</h3>' +
-    action('clear-learning', '清理本机学习记录') +
+    action('record-sync','账号学习记录 · 预览与合并')+' '+action('clear-learning', '清理本机学习记录') +
     '</article></section></div></div>'
   );
 }

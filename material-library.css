@@ -1,0 +1,218 @@
+.kb-layout {
+  grid-template-columns: minmax(0, 2.7fr) minmax(215px, 1fr);
+  align-items: start;
+}
+.kb-layout > div,
+.kb-layout > aside {
+  min-width: 0;
+}
+.kb-layout .card {
+  padding: 14px;
+}
+.material-find,
+.material-heading,
+.material-index-actions,
+.material-version,
+.material-track,
+.material-form-grid,
+.material-snippet footer,
+.material-resume-progress {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.material-find {
+  margin: 10px 0;
+}
+.material-find input {
+  width: min(290px, 100%);
+  flex: 1;
+  min-width: 130px;
+}
+.material-find select {
+  max-width: 155px;
+}
+.material-table th,
+.material-table td {
+  padding: 9px 6px;
+}
+.material-table th {
+  background: #f6f3fb;
+  color: #60576f;
+}
+.material-table .selected-material {
+  background: #f2edfb;
+}
+.material-table button {
+  font-size: 0.92em;
+}
+.material-table .material-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 2px;
+  max-width: 100%;
+}
+.material-doc {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  min-height: 30px;
+  border-radius: 3px 7px 3px 3px;
+  background: linear-gradient(135deg, #eee6fa, #d9c7f3);
+  color: #6846ac;
+  font: 500 8px/1.3 system-ui;
+}
+.material-badge {
+  display: inline-block;
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+.material-badge.ready {
+  color: #2a7652;
+  background: #e8f5ec;
+}
+.material-badge.pending,
+.material-badge.reading {
+  color: #895b24;
+  background: #fff3d5;
+}
+.material-badge.failed,
+.material-warning {
+  color: #8c3a3b;
+  background: #fdebed;
+}
+.material-detail {
+  margin-top: 12px;
+}
+.material-heading {
+  justify-content: space-between;
+}
+.material-heading h2 {
+  margin: 0 0 4px !important;
+  font-size: 1.16rem;
+}
+.material-track {
+  margin: 13px 0;
+  padding: 9px;
+  background: #f8f6fb;
+  border: 1px solid #e8e4ef;
+  border-radius: 7px;
+  gap: 12px;
+}
+.material-track span {
+  color: #89818f;
+  font-size: 0.86rem;
+}
+.material-track .done {
+  color: #376e55;
+}
+.material-index-actions {
+  color: #766c81;
+  font-size: 0.88rem;
+}
+.material-index-actions button {
+  padding: 3px 7px;
+  margin-left: auto;
+}
+.material-warning {
+  padding: 7px;
+  border-radius: 5px;
+}
+.material-version {
+  padding: 9px 0;
+  border-bottom: 1px solid #efeaf3;
+}
+.material-version small {
+  margin-left: auto;
+}
+.material-lookup .primary {
+  width: 100%;
+}
+.material-lookup article,
+.material-snippet {
+  background: #f7f4fb;
+  border: 1px solid #e8e1f0;
+  border-radius: 7px;
+  padding: 10px;
+  margin: 7px 0;
+}
+.material-lookup article b,
+.material-lookup small {
+  display: block;
+}
+.material-lookup p,
+.material-snippet p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.material-snippet footer {
+  justify-content: flex-end;
+}
+.material-snippet footer button {
+  padding: 4px 8px;
+}
+.material-form-grid > label {
+  flex: 1;
+  min-width: 110px;
+}
+.material-text-reader .pdf-grid {
+  display: block;
+}
+.material-text-reader.with-panel .pdf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(210px, 1fr);
+  gap: 12px;
+}
+.material-text-reader .work-paper {
+  background: white;
+}
+.material-text-reader .work-paper section {
+  padding: 6px 0 15px;
+  border-bottom: 1px solid #eee8f4;
+}
+.material-text-reader .work-paper p {
+  line-height: 1.8;
+}
+.material-text-reader .pdf-panel {
+  min-width: 0;
+}
+.material-resume-progress progress {
+  height: 5px;
+  accent-color: #7454d6;
+  max-width: 17vw;
+}
+@media (max-width: 760px) {
+  .kb-layout,
+  .material-text-reader.with-panel .pdf-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .material-find input,
+  .material-find select {
+    max-width: 100%;
+  }
+  .material-table .material-file {
+    display: block;
+  }
+  .material-table td,
+  .material-table th {
+    padding: 5px 3px;
+  }
+  .material-table .material-doc {
+    display: none;
+  }
+  .kb-layout .table-scroll td button {
+    white-space: normal;
+  }
+  .material-track {
+    gap: 6px;
+  }
+  .kb-layout .card {
+    padding: 10px;
+  }
+}

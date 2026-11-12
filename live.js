@@ -1,8 +1,13 @@
+import {setupRecordSync} from './record-sync.js';
+import {createChatWidgets} from './chat-widgets.js';
 import { apiFetch, cloud, mirror } from './gateway.js';
 import { learningBackup, inspectBackup, mergeBackup, settingsPage } from './privacy.js';
 import course from './content.js';
 import { avatar, esc as h, icon } from './ui.js';
 import { createWorkspaceIntro } from './workspace-intro.js';
+import {installStudyContent} from './study-data.js';
+import {createStudentStudy} from './student-study.js';
+installStudyContent(course);
 const root = document.querySelector('#app'),
   dialog = document.querySelector('#menu'),
   notification = document.querySelector('#feedback');
@@ -15,7 +20,7 @@ try {
 } catch {}
 if (!data || !Array.isArray(data.threads) || !data.threads.length)
   data = { threads: [blank()], notes: [], answers: {}, read: {}, favorites: [], reduce: false };
-let threadId = data.threads[0].id,
+let threadId = data.threads.find(t => t.id === data.chatThreadId)?.id || data.threads[0].id,
   chapterIndex = 0,
   selected = '',
   busy = null,
@@ -26,7 +31,7 @@ let threadId = data.threads[0].id,
 let pendingBackup = null,
   libraryModule = '',
   libraryType = '';
-const moduleNames = ['认识论', '辩证法', '辩证法'];
+const moduleNames = course.chapters.map(c=>c.module);
 const chapter = () => course.chapters[chapterIndex] || course.chapters[0],
   thread = () => data.threads.find((t) => t.id === threadId);
 const questions = course.chapters.flatMap((c) =>
@@ -58,6 +63,7 @@ function toast(t) {
   timer = setTimeout(() => (notification.textContent = ''), 2600);
 }
 function save() {
+  data.chatThreadId = threadId;
   try {
     localStorage.setItem(
       key,
@@ -115,102 +121,14 @@ function layout() {
     '</nav>'
   );
 }
-function turnView(t, i) {
-  return (
-    '<div class="user-turn"><div class="bubble">' +
-    h(t.q) +
-    '</div></div><article class="response">' +
-    avatar +
-    '<div class="answer"><strong>马小原</strong><p class="answer-text">' +
-    h(t.a || '正在连接模型…') +
-    '</p>' +
-    (t.error
-      ? '<p class="error">' +
-        h(t.error) +
-        (mirror ? '　<a class="btn outline" href="' + cloud + '">打开云端课堂 ↗</a>' : '') +
-        '</p>'
-      : '') +
-    (t.source
-      ? '<div>' +
-        action('open-source', icon('book') + ' ' + h(t.source.title), t.source.id, 'tag') +
-        '</div>'
-      : '') +
-    '<div class="actions">' +
-    (t.a ? action('save-answer', '收藏到笔记', i) : '') +
-    action('retry', '编辑并重发', i) +
-    '</div></div></article>'
-  );
-}
-function chat() {
-  const current = thread(),
-    waiting = busy?.thread === current.id;
-  const history =
-    '<aside class="history">' +
-    action('new', '＋ 新建对话', '', 'outline stretch') +
-    '<h3>最近对话</h3>' +
-    data.threads
-      .map((t) =>
-        action(
-          'switch',
-          icon('chat') + '　' + h(t.turns[0]?.q.slice(0, 16) || '新对话'),
-          t.id,
-          'entry ' + (t.id === current.id ? 'selected' : ''),
-        ),
-      )
-      .join('') +
-    '</aside>';
-  const quick = [
-    '用生活中的例子解释实践与认识',
-    '比较矛盾的普遍性和特殊性',
-    '如何用实践检验学习方法？',
-    '帮我安排今天的课程复习',
-  ];
-  const welcome =
-    '<div class="welcome"><div class="welcome-mascot">' +
-    avatar +
-    '</div><h1>今天想聊点什么？</h1><p>读原文、辨概念，或把刚才没听懂的问题带进来。</p><div class="prompt-grid">' +
-    quick
-      .map((q, i) =>
-        action('prompt', icon(['book', 'layers', 'edit', 'notes'][i]) + '　' + h(q) + '　›', q),
-      )
-      .join('') +
-    '</div></div>';
-  return (
-    '<div class="room">' +
-    history +
-    '<div class="chat"><div class="bar"><span class="crumb">AI 咨询室　›　<b>' +
-    h(current.turns[0]?.q.slice(0, 14) || '新对话') +
-    '</b></span><select aria-label="选择回答模型" id="chat-engine"><option value="cloud" ' +
-    (data.engine !== 'device' ? 'selected' : '') +
-    ' id="model-label">' +
-    h(model.label) +
-    '</option><option value="device" ' +
-    (data.engine === 'device' ? 'selected' : '') +
-    '>通义千问 · 设备模型</option></select>' +
-    action('sessions', '历史', '', 'mobile-only') +
-    '</div><div class="stream">' +
-    (current.turns.length ? current.turns.map(turnView).join('') : welcome) +
-    '</div><form class="composer" id="chat-form"><textarea aria-label="输入问题" id="question" maxlength="1800" placeholder="发消息给马小原…">' +
-    h(current.draft) +
-    '</textarea><div class="row"><label class="switch-chip"><input id="use-source" type="checkbox" ' +
-    (studySources ? 'checked' : '') +
-    '> 课程资料</label><small class="composer-help">' +
-    (data.engine === 'device'
-      ? '首次下载约 429 MB，此后在本设备推理。'
-      : '问题与最近对话将发往 ' + h(model.host || '云端模型')) +
-    '</small><i class="spacer"></i>' +
-    (waiting
-      ? action('stop', '停止', '', 'outline')
-      : '<button class="primary" type="submit">发送 ↑</button>') +
-    '</div></form></div></div>'
-  );
-}
+function chat() {return chatWidgets.view();}
+
 function contentPage(title, body) {
   return '<div class="page"><div class="head"><h1>' + title + '</h1></div>' + body + '</div>';
 }
 function library() {
   const last = course.chapters.findIndex((c) => c.id === data.lastChapter);
-  const choices = ['认识论', '辩证法'];
+  const choices = [...new Set(moduleNames)];
   return contentPage(
     '课程资料',
     '<p>从原文开始理解，随时提问和记录。</p>' +
@@ -529,18 +447,26 @@ function notebook() {
       '</section>',
   );
 }
-function editor(title = '', text = '', id = '') {
-  modal(
-    '编辑笔记',
-    '<form id="note-form" data-id="' +
-      h(id) +
-      '"><label class="field">标题<input id="note-title" required maxlength="100" value="' +
-      h(title) +
-      '"></label><label class="field">正文<textarea id="note-text" required rows="8" maxlength="9000">' +
-      h(text) +
-      '</textarea></label><button class="primary">保存笔记</button></form>',
-  );
-}
+const study=createStudentStudy({course,data:()=>data,save,go,render,toast,modal,ask:q=>{thread().draft=q;save();go('chat');},read:openRef});
+function editor(title='',text='',id=''){study.openNote(title,text,id);}
+const chatWidgets = createChatWidgets({
+  course, data: () => data, thread, busy: () => busy, model: () => model,
+  save, go, render, toast, modal, read: openRef, study,
+  useSources: () => studySources, cloudUrl: mirror ? cloud : '',
+  regenerate(index) {
+    const old = thread(), turn = old.turns[index];
+    if (!turn || busy) return;
+    // Save the prior conversation and every later answer while branching at this question.
+    const branch = blank();
+    branch.turns = structuredClone(old.turns.slice(0,index));
+    branch.draft = turn.q;
+    data.threads.unshift(branch);
+    threadId = branch.id;
+    selected = studySources ? turn.source?.id || '' : '';
+    save();
+    send();
+  },
+});
 function render() {
   root.innerHTML = layout();
   const views = {
@@ -552,8 +478,10 @@ function render() {
     notes: notebook,
     progress,
     settings: () => settingsPage(data, action),
+    ...study.views,
   };
   root.querySelector('main').innerHTML = (views[route()] || chat)();
+  chatWidgets.mount();
   document.body.classList.toggle('reduce', !!data.reduce);
 }
 function reference(question) {
@@ -591,7 +519,7 @@ async function send() {
       .filter((x) => x.a && !x.error)
       .slice(-4)
       .map(({ q, a }) => ({ q, a }));
-  const turn = { q, a: '', source: ref ? { id: ref.id, title: ref.title } : null };
+  const turn = { q, a: '', modelLabel: chatWidgets.caption(), source: ref ? { id: ref.id, title: ref.title, text: ref.text, page: ref.page, module: ref.module } : null };
   t.turns.push(turn);
   t.draft = '';
   selected = '';
@@ -628,7 +556,7 @@ async function send() {
     const response = await apiFetch('chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: q, history, source: ref ? ref.title + '\n' + ref.text : '' }),
+      body: JSON.stringify({ text: q, history, source: ref ? ref.title + '\n' + ref.text : '', modelId:chatWidgets.modelId(), webSearch:chatWidgets.webSearch() }),
       signal: controller.signal,
     });
     if (!response.ok) throw Error((await response.json()).error || '发送失败');
@@ -648,6 +576,7 @@ async function send() {
           turn.a = e.text;
           update();
         }
+        if (Array.isArray(e.webSources)) turn.webSources = e.webSources.slice(0,10);
         if (e.type === 'done') done = true;
       }
       if (packet.done) break;
@@ -674,6 +603,7 @@ function openRef(id) {
   setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'center' }), 40);
 }
 const actions = {
+  ...setupRecordSync({data:()=>data,save,render,modal,toast,action,learningBackup,inspectBackup,mergeBackup,questions,chapterIds:course.chapters.map(c=>c.id)}),
   close: () => dialog.close(),
   new: () => {
     if (thread().turns.length || thread().draft) {
@@ -687,6 +617,7 @@ const actions = {
   },
   switch: (v) => {
     threadId = v;
+    save();
     dialog.close();
     go('chat');
   },
@@ -736,8 +667,7 @@ const actions = {
     editor(n.title, n.text, n.id);
   },
   quiz: (v) => {
-    activeQuiz = +v;
-    go('practice');
+    study.openQuestion(+v);
   },
   again: () => {
     delete data.answers[questions[activeQuiz].id];
@@ -814,6 +744,7 @@ const actions = {
       read: {},
       favorites: [],
       lastChapter: null,
+      study24:undefined,
     };
     threadId = t.id;
     save();
@@ -940,6 +871,7 @@ apiFetch('status')
   .then((r) => r.json())
   .then((x) => {
     Object.assign(model, x);
+    chatWidgets.refreshModel();
     if (route() === 'chat' && !busy) {
       const label = document.querySelector('#model-label'),
         hint = document.querySelector('.composer-help');
@@ -949,6 +881,7 @@ apiFetch('status')
   })
   .catch(() => {
     model.label = '暂未连接';
+    chatWidgets.refreshModel();
     const l = document.querySelector('#model-label');
     if (l) l.textContent = model.label;
   });

@@ -1,0 +1,9 @@
+import {esc as h} from './ui.js';
+const works=document.querySelector('#works'),modal=document.querySelector('#preview'),filter=document.querySelector('#filter');let rows=[];
+const fileURL=(id,mode)=>'./api/showcase/file/'+encodeURIComponent(id)+'?mode='+mode;
+function render(){const list=rows.filter(x=>(x.title+x.topic+x.body).includes(filter.value));works.innerHTML=list.map(w=>'<article class="card"><small>'+h(w.topic||'课程作品')+(w.featured?' · 精选':'')+'</small><h2>'+h(w.title)+'</h2><p>'+h(w.body)+'</p><b>'+h(w.author||'匿名作者')+'</b><div>'+w.files.map(f=>'<button data-id="'+h(f.id)+'">预览 '+h(f.name)+'</button>'+(w.downloadable?' <a class="btn" href="'+fileURL(f.id,'download')+'">下载原件</a>':'')).join(' ')+'</div></article>').join('')||'<section class="card"><h2>暂无符合条件的公开作品</h2></section>';}
+filter.addEventListener('input',render);document.querySelector('#close').onclick=()=>modal.close();modal.onclose=()=>modal.querySelector('article').replaceChildren();
+works.onclick=async e=>{const id=e.target.closest('button')?.dataset.id;if(!id)return;const f=rows.flatMap(w=>w.files).find(f=>f.id===id);if(!f)return;const box=modal.querySelector('article');box.textContent='正在打开…';modal.showModal();try{if(f.mime==='video/mp4'){const v=document.createElement('video');v.controls=true;v.playsInline=true;v.src=fileURL(id,'preview');box.replaceChildren(v);return;}
+const r=await fetch(fileURL(id,'preview'));if(!r.ok)throw Error('作品授权已变更，请刷新。');const pages=await r.json();box.replaceChildren();pages.forEach((src,i)=>{const p=new Image();p.alt='第 '+(i+1)+' 页';p.src=src;p.style.maxWidth='100%';box.append(p);});}catch(err){box.textContent=err.message;}};
+try{const r=await fetch('./api/showcase');if(!r.ok)throw Error();rows=(await r.json()).works;render();}catch{works.textContent='作品暂时无法加载，请刷新重试。';}
+

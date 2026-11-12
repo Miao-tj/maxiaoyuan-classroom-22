@@ -5,6 +5,7 @@ export async function apiFetch(operation, options) {
     ? new URL('api/' + operation, cloud)
     : new URL('./api/' + operation, location.href);
   try {
+    if(!mirror&&operation==='chat'){const a=localStorage.getItem('mxy-login24')||sessionStorage.getItem('mxy-login24');if(a)options={...options,headers:{...options.headers,Authorization:'Bearer '+a}};}
     const response = await fetch(url, options);
     if (mirror && !(response.headers.get('content-type') || '').includes('json'))
       throw Error('网关未连通');
