@@ -292,7 +292,8 @@ function render() {
     '</h1><span class="tag">' +
     (isTeacher() ? '课程创建者' : '学生') +
     '</span><i class="spacer"></i>' +
-    b('refresh', '刷新') + b('account', '课程与身份') +
+    b('refresh', '刷新') +
+    b('account', '课程与身份') +
     '</div><nav class="tabs">' +
     tabs.map(([id, l]) => b('tab', l, id, tab === id ? 'active' : '')).join('') +
     '</nav>' +

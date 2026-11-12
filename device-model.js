@@ -105,42 +105,80 @@ export async function deviceChat(text, source, history, { signal, status, update
 }
 const labels = ['理论理解', '文本依据', '联系实际', '结构与表达'],
   maxima = [30, 25, 25, 20];
-const gradingGrammar = String.raw`root ::= first "|" remark "\n" second "|" remark "\n" second "|" remark "\n" fourth "|" remark "\n"
-first ::= "30" | [12] [0-9] | [0-9]
-second ::= "2" [0-5] | "1" [0-9] | [0-9]
-fourth ::= "20" | "1" [0-9] | [0-9]
-remark ::= [^|\r\n]{5,35}`;
+const bands = [
+  { letter: 'A', ratio: 1, title: '充分' },
+  { letter: 'B', ratio: 0.85, title: '较充分' },
+  { letter: 'C', ratio: 0.65, title: '基本' },
+  { letter: 'D', ratio: 0.35, title: '薄弱' },
+  { letter: 'E', ratio: 0, title: '未体现' },
+];
+const criteria = [
+  '核心概念的含义准确，解释概念间关系并限定条件。',
+  '指出所读篇目、原句或可定位段落，并作解释。全文未引用或交代任何文本，只能选择D或E。',
+  '给出具体真实情境，说明行动、观察和结论之间的联系。',
+  '结构清楚，使用完整语句，能连贯论证并回应主题。',
+];
 
 export async function deviceReview(text, { signal, status }) {
   if (text.length > 9000) throw Error('请提交 40～9000 字的正文。');
   const llm = await ready(status, signal);
-  signal?.throwIfAborted();
-  status('通义千问正在阅读正文…');
-  const instruction =
-    '你是课程教师。依次评价理论理解（30分）、文本依据（25分）、联系实际（25分）、结构表达（20分）。每行只写整数分数、竖线和一句精简中文评语。评语引用本文的内容。没有所读原文的举证，应扣文本依据分。只写四行。';
-  const input = prompt(instruction, text);
-  if ((await llm.tokenize(input, true)).length + 480 > 8192) throw Error('正文超过设备模型的上下文容量，请分段或使用云端评阅。');
-  const result = await llm.createCompletion(input, {
-    abortSignal: signal,
-    nPredict: 480,
-    sampling: { temp: 0.2, grammar: gradingGrammar },
-    onNewToken: (_id, _piece, answer) => {
-      const finished = answer.split('\n').length - 1;
-      if (finished > 0 && finished < 4) status('通义千问已分析 ' + finished + ' / 4 项…');
-    },
-  });
-  const rows = result.trim().split(/\r?\n/);
-  if (rows.length !== 4) throw Error('设备模型没有完成四项评语，请重试。');
-  const dimensions = rows.map((row, i) => {
-    const match = /^(\d{1,2})\|(.+)$/.exec(row.trim());
-    if (!match || Number(match[1]) > maxima[i]) throw Error('模型给分超出量规，请重试。');
-    return { name: labels[i], max: maxima[i], score: Number(match[1]), comment: match[2].trim() };
-  });
+  const choices = new Map();
+  for (const band of bands) {
+    for (const value of [band.letter, ' ' + band.letter]) {
+      const ids = await llm.tokenize(value, false);
+      if (ids.length === 1) choices.set(ids[0], band);
+    }
+  }
+  const dimensions = [];
+  for (const [i, name] of labels.entries()) {
+    signal?.throwIfAborted();
+    status('通义千问正在评阅 ' + (i + 1) + ' / 4 · ' + name);
+    const instruction =
+      '你是马克思主义基本原理课程教师。阅读学生的作业，按指定量规独立评价。请以文中证据为依据。';
+    const question =
+      '学生正文：\n' +
+      text +
+      '\n\n本项为' +
+      name +
+      '。量规：' +
+      criteria[i] +
+      '\n选择最符合证据的一档。A=充分，B=较充分，C=基本，D=薄弱，E=未体现。请先写一个英文字母作为等级，再结合文中细节写一句中文评语。';
+    const input = prompt(instruction, question) + '等级：';
+    if ((await llm.tokenize(input, true)).length + 100 > 8192)
+      throw Error('正文超过设备模型的上下文容量，请分段或使用云端评阅。');
+    // Evaluate the actual five label probabilities without asking the small model to serialize a report.
+    await llm.createCompletion(input, { nPredict: 0, useCache: true, abortSignal: signal });
+    signal?.throwIfAborted();
+    let selected = (await llm.getLogits(256)).find((item) => choices.has(item.token));
+    if (!selected) selected = (await llm.getLogits(-1)).find((item) => choices.has(item.token));
+    if (!selected) throw Error('模型未能判断评分档位，请重试。');
+    const band = choices.get(selected.token);
+    const response = await llm.createCompletion(input + band.letter + '\n评语：', {
+      nPredict: 80,
+      useCache: true,
+      abortSignal: signal,
+      sampling: { temp: 0.25 },
+      onNewToken: (_id, _piece, answer, control) => {
+        if (/[。！？]/.test(answer) && answer.trim().length >= 8) control.abortSignal();
+      },
+    });
+    signal?.throwIfAborted();
+    const comment = response
+      .trim()
+      .split(/\n|<\|/)[0]
+      .trim();
+    dimensions.push({
+      name,
+      max: maxima[i],
+      score: Math.round(maxima[i] * band.ratio),
+      comment: band.title + '。' + (comment || '请对照本项量规复核。'),
+    });
+  }
   const weakest = dimensions.reduce((a, b) => (a.score / a.max <= b.score / b.max ? a : b));
   return {
     dimensions,
-    total: dimensions.reduce((sum, d) => sum + d.score, 0),
-    summary: '可优先复核「' + weakest.name + '」。' + weakest.comment,
+    total: dimensions.reduce((n, d) => n + d.score, 0),
+    summary: '按模型对各项证据的五档判断计分。可优先复核「' + weakest.name + '」。' + weakest.comment,
     method: '设备模型',
   };
 }
