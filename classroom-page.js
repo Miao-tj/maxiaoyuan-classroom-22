@@ -1,3 +1,5 @@
+import { createProjects } from './class-projects.js';
+import { createMaterials } from './class-materials.js';
 import { esc as h, icon } from './ui.js';
 const root = document.querySelector('#room'),
   dialog = document.querySelector('#class-dialog'),
@@ -6,7 +8,11 @@ const store = 'mxy-course-credentials22';
 let accounts = [],
   current,
   room,
-  tab = 'overview',
+  tab = location.hash.startsWith('#read=')
+    ? 'materials'
+    : ['works', 'materials', 'questions', 'students'].includes(location.hash.slice(1))
+      ? location.hash.slice(1)
+      : 'overview',
   working = false;
 try {
   accounts = JSON.parse(localStorage.getItem(store) || '[]');
@@ -52,10 +58,10 @@ async function api(op, body = {}) {
   const res = await fetch('./api/class/' + op, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...(current?.token ? { Authorization: 'Bearer ' + current.token } : {}),
     },
-    body: JSON.stringify(body),
+    body: body instanceof FormData ? body : JSON.stringify(body),
   });
   let d;
   try {
@@ -137,22 +143,6 @@ function overview() {
         b('invite', '复制学生入口', '', 'outline')
       : '<p>在「课程资料」打开教师发布的讲义，练习提交后可以查看解析。</p>') +
     '</section>'
-  );
-}
-function materials() {
-  return (
-    (isTeacher() ? b('new-material', '＋ 发布讲义', '', 'primary') : '') +
-    (!room.materials.length ? '<p>目前还没有发布的讲义。</p>' : '') +
-    room.materials
-      .map(
-        (x) =>
-          '<details class="card segment"><summary><b>' +
-          h(x.title) +
-          '</b></summary><p class="answer-text">' +
-          h(x.body) +
-          '</p></details>',
-      )
-      .join('')
   );
 }
 const sample = [
@@ -254,57 +244,60 @@ function students() {
     '</div>'
   );
 }
-const status = { pending: '待审核', published: '已在班内展示', accepted: '已收阅', returned: '已退回' };
-function works() {
-  return (
-    (isTeacher() ? '' : b('submit-work', '＋ 提交作品', '', 'primary')) +
-    (!room.works.length ? '<p>目前没有可查看的作品。</p>' : '') +
-    room.works
-      .map(
-        (w) =>
-          '<article class="card segment"><div class="row"><h2>' +
-          h(w.title) +
-          '</h2><span class="tag">' +
-          status[w.status] +
-          '</span></div>' +
-          (w.alias ? '<small>' + h(w.alias) + '</small>' : '') +
-          '<p class="answer-text">' +
-          h(w.body) +
-          '</p>' +
-          (w.feedback ? '<p>教师评语　' + h(w.feedback) + '</p>' : '') +
-          (isTeacher() ? b('review', '审核并写评语', w.id, 'outline') : '') +
-          '</article>',
-      )
-      .join('')
-  );
-}
+const ctx = {
+  room: () => room,
+  token: () => current?.token,
+  api,
+  refresh,
+  redraw: render,
+  notice: show,
+  pop,
+  close: () => dialog.close(),
+};
+const projects = createProjects(ctx),
+  library = createMaterials(ctx);
+const tabInfo = () => [
+  ['overview', isTeacher() ? '教学概览' : '课程概览', 'home'],
+  ['materials', isTeacher() ? '课程资料' : '课程学习', 'book'],
+  ['questions', isTeacher() ? '题库管理' : '题库练习', 'edit'],
+  ['works', isTeacher() ? '成果审核' : '小组成果', 'users'],
+  ...(isTeacher() ? [['students', '班级学情', 'chart']] : []),
+];
 function render() {
-  const tabs = [
-    ['overview', isTeacher() ? '教学概览' : '课程概览'],
-    ['materials', '课程资料'],
-    ['questions', isTeacher() ? '题库管理' : '章节练习'],
-    ['works', isTeacher() ? '作品审核' : '小组成果'],
-    ...(isTeacher() ? [['students', '班级学情']] : []),
-  ];
+  if (!tabInfo().some(([id]) => id === tab)) tab = 'overview';
   root.innerHTML =
-    '<div class="head"><h1>' +
+    '<div class="course-shell"><nav class="class-rail" aria-label="班级导航">' +
+    tabInfo()
+      .map(([id, label, name]) =>
+        b('tab', icon(name) + '<span>' + label + '</span>', id, id === tab ? 'active' : ''),
+      )
+      .join('') +
+    '<div class="rail-base">' +
+    b('account', icon('settings') + ' 课程与身份') +
+    '</div></nav><section class="class-main"><div class="class-context"><span>' +
     h(room.title) +
-    '</h1><span class="tag">' +
-    (isTeacher() ? '课程创建者' : '学生') +
-    '</span><i class="spacer"></i>' +
+    '</span><span>' +
+    (isTeacher() ? '教师' : '学生') +
+    '</span>' +
     b('refresh', '刷新') +
-    b('account', '课程与身份') +
-    '</div><nav class="tabs">' +
-    tabs.map(([id, l]) => b('tab', l, id, tab === id ? 'active' : '')).join('') +
-    '</nav>' +
-    ({ overview, materials, questions: questionList, works, students }[tab] || overview)();
+    '</div>' +
+    {
+      overview,
+      materials: library.render,
+      questions: questionList,
+      works: projects.render,
+      students,
+    }[tab]() +
+    '</section></div>';
+  if (tab === 'works') projects.hydrate();
+  if (tab === 'materials') library.hydrate();
 }
 const actions = {
   close: () => dialog.close(),
   refresh,
   tab: async (v) => {
     tab = v;
-    render();
+    history.replaceState(null, '', '#' + v);
     await refresh();
   },
   invite: async () => {
@@ -331,7 +324,10 @@ const actions = {
         b('entry', '切换或加入其他班级'),
     ),
   reveal: () =>
-    pop('个人访问码', '<p>持有此码的人可以操作你的课程身份。</p><code>' + h(current.token) + '</code>'),
+    pop(
+      '个人访问码',
+      '<p>持有此码的人可以操作你的课程身份。</p><code>' + h(current.token) + '</code>',
+    ),
   entry: () => {
     dialog.close();
     room = null;
@@ -356,32 +352,43 @@ const actions = {
         submit('校验并导入') +
         '</form>',
     ),
-  'submit-work': () =>
-    pop(
-      '提交作品',
-      '<form data-op="submit">' +
-        input('title', '作品名称') +
-        area('body', '作品正文') +
-        '<label class="field"><input type="checkbox" name="share"> 允许教师审核后向本班展示</label>' +
-        submit('提交给教师') +
-        '</form>',
-    ),
-  review: (id) => {
-    const w = room.works.find((w) => w.id === id);
-    pop(
-      '作品审核',
-      '<form data-op="moderate" data-id="' +
-        h(id) +
-        '"><label class="field">审核决定<select name="status"><option value="accepted">仅收阅</option><option value="returned">退回修改</option>' +
-        (w.consent ? '<option value="published">在班内展示</option>' : '') +
-        '</select></label><label class="field">评语<textarea name="feedback" maxlength="1200">' +
-        h(w.feedback) +
-        '</textarea></label>' +
-        submit('保存审核结果') +
-        '</form>',
-    );
-  },
 };
+document.addEventListener('click', async (e) => {
+  const p = e.target.closest('[data-project]'),
+    m = e.target.closest('[data-material]');
+  try {
+    if (p) await projects.click(p.dataset.project, p.dataset.value);
+    if (m) library.click(m.dataset.material, m.dataset.value);
+  } catch (err) {
+    show(err.message);
+  }
+});
+document.addEventListener('input', (e) => {
+  if (e.target.matches('[data-material-search]')) library.search(e.target.value);
+  if (
+    e.target.matches(
+      '[data-search], [data-project-form=editor] input:not([type=file]):not([type=checkbox]), [data-project-form=editor] textarea',
+    )
+  )
+    projects.edit(e).catch((err) => show(err.message));
+});
+document.addEventListener('change', (e) => {
+  if (
+    e.target.matches(
+      '[data-sort],[data-filtertype],[data-project-form=editor] input[type=checkbox],[data-file]',
+    )
+  )
+    projects.edit(e).catch((err) => show(err.message));
+});
+document.addEventListener('submit', (e) => {
+  if (e.target.matches('[data-project-form]'))
+    projects.send(e).catch((err) => {
+      show(err.message);
+      const n = e.target.querySelector('[data-edit-status]');
+      if (n) n.textContent = err.message;
+    });
+  if (e.target.matches('[data-material-form]')) library.send(e).catch((err) => show(err.message));
+});
 document.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-cmd]');
   if (!el) return;
@@ -413,15 +420,15 @@ document.addEventListener('submit', async (e) => {
         current = prev;
         throw err;
       }
-      tab = 'overview';
+      if (!['materials', 'works'].includes(tab)) tab = 'overview';
       render();
       return;
     }
     if (op === 'create' || op === 'join') {
       const a = await api(op, body);
       remember(a);
-      tab = 'overview';
-      history.replaceState({}, '', location.pathname);
+      if (!['materials', 'works'].includes(tab)) tab = 'overview';
+      history.replaceState({}, '', location.pathname + '#' + tab);
       await refresh();
       return;
     }
@@ -447,8 +454,6 @@ document.addEventListener('submit', async (e) => {
         throw Error('JSON 格式有误，请检查括号和引号。');
       }
     } else if (op === 'answer') body = { id: f.dataset.id, choice: Number(body.choice) };
-    else if (op === 'submit') body.share = body.share === 'on';
-    else if (op === 'moderate') body.id = f.dataset.id;
     await api(op, body);
     dialog.close();
     await refresh();

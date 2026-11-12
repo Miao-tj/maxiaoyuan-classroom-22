@@ -1,4 +1,5 @@
 import { apiFetch, cloud, mirror } from './gateway.js';
+import { learningBackup, inspectBackup, mergeBackup, settingsPage } from './privacy.js';
 import course from './content.js';
 import { avatar, esc as h, icon } from './ui.js';
 import { createWorkspaceIntro } from './workspace-intro.js';
@@ -22,9 +23,15 @@ let threadId = data.threads[0].id,
   studySources = true,
   search = '',
   timer;
+let pendingBackup = null,
+  libraryModule = '',
+  libraryType = '';
+const moduleNames = ['认识论', '辩证法', '辩证法'];
 const chapter = () => course.chapters[chapterIndex] || course.chapters[0],
   thread = () => data.threads.find((t) => t.id === threadId);
-const questions = course.chapters.flatMap((c) => c.questions.map((q) => ({ ...q, chapter: c.title })));
+const questions = course.chapters.flatMap((c) =>
+  c.questions.map((q) => ({ ...q, chapter: c.title })),
+);
 const nav = [
   ['chat', 'AI 咨询室', 'chat'],
   ['library', '课程学习', 'book'],
@@ -43,7 +50,8 @@ const action = (id, label, v = '', cls = '') =>
   '">' +
   label +
   '</button>';
-const link = (url, label, cls = '') => '<a class="' + cls + '" href="#' + url + '">' + label + '</a>';
+const link = (url, label, cls = '') =>
+  '<a class="' + cls + '" href="#' + url + '">' + label + '</a>';
 function toast(t) {
   notification.textContent = t;
   clearTimeout(timer);
@@ -51,7 +59,14 @@ function toast(t) {
 }
 function save() {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    localStorage.setItem(
+      key,
+      JSON.stringify(
+        data.keepDraft === false
+          ? { ...data, threads: data.threads.map((t) => ({ ...t, draft: '' })) }
+          : data,
+      ),
+    );
   } catch {
     toast('设备存储空间不足，本次记录未保存');
   }
@@ -91,7 +106,9 @@ function layout() {
     navLinks +
     '<a href="./classroom.html">' +
     icon('users') +
-    ' 班级课堂</a><div class="rail-foot">' +
+    ' 班级课堂</a><a href="./classroom.html#works">' +
+    icon('layers') +
+    ' 小组成果</a><div class="rail-foot">' +
     action('settings', icon('settings') + ' 设置与隐私') +
     '</div></nav><main class="workspace" id="main"></main></div><nav class="live-mobile" aria-label="移动导航">' +
     navLinks +
@@ -192,39 +209,79 @@ function contentPage(title, body) {
   return '<div class="page"><div class="head"><h1>' + title + '</h1></div>' + body + '</div>';
 }
 function library() {
+  const last = course.chapters.findIndex((c) => c.id === data.lastChapter);
+  const choices = ['认识论', '辩证法'];
   return contentPage(
     '课程资料',
-    '<p>马克思主义基本原理 · 原创课程讲义</p><div class="card"><label class="field">搜索讲义<input type="search" id="find-doc" value="' +
+    '<p>从原文开始理解，随时提问和记录。</p>' +
+      (last < 0
+        ? ''
+        : '<div class="resume-card">' +
+          icon('book') +
+          '<div><b>' +
+          h(course.chapters[last].title) +
+          '</b><small>上次阅读 · 课程讲义</small></div>' +
+          action('read', '继续阅读', last, 'primary') +
+          '</div>') +
+      '<div class="materials-grid"><section class="card"><div class="project-filters"><input type="search" aria-label="搜索资料" id="find-doc" value="' +
       h(search) +
-      '" placeholder="输入标题或概念"></label><div id="chapter-list">' +
+      '" placeholder="搜索资料名称或关键词"><select id="module-filter" aria-label="知识模块"><option value="">全部模块</option>' +
+      choices
+        .map((x) => '<option ' + (x === libraryModule ? 'selected' : '') + '>' + x + '</option>')
+        .join('') +
+      '</select></div><nav class="project-tabs">' +
+      [
+        ['', '全部资料'],
+        ['lecture', '课程讲义'],
+        ['pdf', '班级 PDF'],
+      ]
+        .map(([id, name]) => action('library-type', name, id, libraryType === id ? 'active' : ''))
+        .join('') +
+      '</nav><div id="chapter-list">' +
       chapterList() +
-      '</div></div>',
+      '</div></section><aside class="card"><h3>按模块浏览</h3>' +
+      ['', ...choices]
+        .map((x) =>
+          action(
+            'library-module',
+            icon('book') + '　' + h(x || '全部模块') + '　›',
+            x,
+            'side-filter',
+          ),
+        )
+        .join('') +
+      '<a class="btn outline" href="./classroom.html#materials">打开班级资料库 →</a></aside></div>',
   );
 }
 function chapterList() {
-  return (
-    course.chapters
-      .map((c, i) => ({ c, i }))
-      .filter(({ c }) =>
+  if (libraryType === 'pdf')
+    return '<p>教师上传的 PDF 随班级保存。进入自己的班级后，可查看获授权的原文与阅读进度。</p><a class="btn primary" href="./classroom.html#materials">进入班级 PDF 资料</a>';
+  const rows = course.chapters
+    .map((c, i) => ({ c, i }))
+    .filter(
+      ({ c, i }) =>
+        (!libraryModule || moduleNames[i] === libraryModule) &&
         (c.title + c.summary + c.paragraphs.map((p) => p.text).join('')).includes(search),
-      )
+    );
+  return (
+    '<div class="table-scroll"><table><thead><tr><th>资料名称</th><th>类型</th><th>知识模块</th><th>阅读进度</th><th>操作</th></tr></thead><tbody>' +
+    rows
       .map(
         ({ c, i }) =>
-          '<article class="resource"><img src="./assets/course-art/cover-' +
-          (i + 1) +
-          '.webp" alt=""><div><strong>' +
+          '<tr><td><b>' +
           h(c.title) +
-          '</strong><p>' +
-          h(c.summary) +
-          '</p><small>' +
-          c.paragraphs.length +
-          ' 段 · ' +
+          '</b></td><td><span class="tag">课程讲义</span></td><td>' +
+          moduleNames[i] +
+          '</td><td>' +
           (data.read[c.id] ? '已打开' : '未开始') +
-          '</small></div><i class="spacer"></i>' +
+          '</td><td>' +
           action('read', '打开阅读', i, 'outline') +
-          '</article>',
+          '</td></tr>',
       )
-      .join('') || '<p class="muted">没有找到匹配的讲义。</p>'
+      .join('') +
+    '</tbody></table></div><small>共 ' +
+    rows.length +
+    ' 份资料</small>'
   );
 }
 function reader() {
@@ -432,7 +489,9 @@ function progress() {
             : '',
         )
         .join('') +
-      (!questions.some((q) => data.answers[q.id]?.correct === false || data.favorites.includes(q.id))
+      (!questions.some(
+        (q) => data.answers[q.id]?.correct === false || data.favorites.includes(q.id),
+      )
         ? '<p>目前没有错题或收藏。</p>'
         : '') +
       '</section>',
@@ -452,6 +511,16 @@ function notebook() {
                 '</h2><p class="answer-text">' +
                 h(n.text) +
                 '</p>' +
+                (n.tags ? '<p class="tag">' + h(n.tags) + '</p>' : '') +
+                (n.source
+                  ? '<a class="btn" href="./classroom.html#read=' +
+                    encodeURIComponent(n.source.id) +
+                    '&amp;page=' +
+                    Number(n.source.page) +
+                    '">返回原文 · 第 ' +
+                    Number(n.source.page) +
+                    ' 页</a> '
+                  : '') +
                 action('edit-note', '编辑', n.id) +
                 '</article>',
             )
@@ -474,7 +543,16 @@ function editor(title = '', text = '', id = '') {
 }
 function render() {
   root.innerHTML = layout();
-  const views = { chat, library, reader, exercises, practice, notes: notebook, progress };
+  const views = {
+    chat,
+    library,
+    reader,
+    exercises,
+    practice,
+    notes: notebook,
+    progress,
+    settings: () => settingsPage(data, action),
+  };
   root.querySelector('main').innerHTML = (views[route()] || chat)();
   document.body.classList.toggle('reduce', !!data.reduce);
 }
@@ -616,7 +694,9 @@ const actions = {
     modal(
       '最近对话',
       action('new', '＋ 新建对话') +
-        data.threads.map((t) => action('switch', h(t.turns[0]?.q || '新对话'), t.id, 'entry')).join(''),
+        data.threads
+          .map((t) => action('switch', h(t.turns[0]?.q || '新对话'), t.id, 'entry'))
+          .join(''),
     ),
   prompt: (v) => {
     thread().draft = v;
@@ -634,6 +714,7 @@ const actions = {
   read: (v) => {
     chapterIndex = +v;
     data.read[chapter().id] = true;
+    data.lastChapter = chapter().id;
     save();
     go('reader');
   },
@@ -671,19 +752,82 @@ const actions = {
     save();
     render();
   },
-  settings: () =>
-    modal(
-      '设置与隐私',
-      '<p>笔记、对话和答题记录保存在当前浏览器中。咨询时会发送本次问题、最近四轮对话以及启用的讲义片段。</p>' +
-        action('motion', data.reduce ? '恢复动效' : '减少动态') +
-        ' ' +
-        action('intro', '重播开场动画'),
-    ),
+  settings: () => go('settings'),
   motion: () => {
     data.reduce = !data.reduce;
     save();
     render();
-    actions.settings();
+  },
+  'keep-draft': () => {
+    data.keepDraft = data.keepDraft === false;
+    save();
+    render();
+  },
+  backup: () => {
+    const blob = new Blob([JSON.stringify(learningBackup(data), null, 2)], {
+      type: 'application/json',
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '马小原-个人学习备份.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  },
+  'import-backup': () => {
+    pendingBackup = null;
+    modal(
+      '导入预览',
+      '<label class="field">选择学习备份<input type="file" id="learning-backup" accept=".json,application/json"></label><p id="backup-preview" role="status">选择文件后可核对笔记、对话及练习数量。</p>',
+    );
+  },
+  'apply-backup': () => {
+    if (!pendingBackup || busy) return;
+    let merged = mergeBackup(data, pendingBackup);
+    if (data.keepDraft === false) merged.threads = merged.threads.map((t) => ({ ...t, draft: '' }));
+    try {
+      localStorage.setItem(key, JSON.stringify(merged));
+    } catch {
+      return toast('存储空间不足，未导入。');
+    }
+    data = merged;
+    pendingBackup = null;
+    dialog.close();
+    render();
+    toast('已合并学习记录，已有记录优先保留。');
+  },
+  'clear-learning': () =>
+    modal(
+      '确认清理本机学习记录',
+      '<p>将清理本站当前浏览器中的私人对话、个人笔记、内置练习和阅读记录。可先导出备份。</p>' +
+        action('clear-confirm', '确认清理') +
+        ' ' +
+        action('close', '取消'),
+    ),
+  'clear-confirm': () => {
+    if (busy) return toast('请先停止正在生成的回答。');
+    const t = blank();
+    data = {
+      ...data,
+      threads: [t],
+      notes: [],
+      answers: {},
+      read: {},
+      favorites: [],
+      lastChapter: null,
+    };
+    threadId = t.id;
+    save();
+    dialog.close();
+    render();
+    toast('本机学习记录已清理。');
+  },
+  'library-module': (v) => {
+    libraryModule = v;
+    render();
+  },
+  'library-type': (v) => {
+    libraryType = v;
+    render();
   },
   intro: () => {
     dialog.close();
@@ -709,7 +853,36 @@ document.addEventListener('input', (e) => {
     document.querySelector('#chapter-list').innerHTML = chapterList();
   }
 });
-document.addEventListener('change', (e) => {
+document.addEventListener('change', async (e) => {
+  if (e.target.id === 'module-filter') {
+    libraryModule = e.target.value;
+    render();
+  }
+  if (e.target.id === 'learning-backup') {
+    pendingBackup = null;
+    const box = document.querySelector('#backup-preview'),
+      file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > 4 * 1024 * 1024) throw Error('备份最多 4 MB。');
+      pendingBackup = inspectBackup(
+        await file.text(),
+        questions,
+        course.chapters.map((c) => c.id),
+      );
+      box.innerHTML =
+        '<p>' +
+        pendingBackup.threads.length +
+        ' 组对话 · ' +
+        pendingBackup.notes.length +
+        ' 条笔记 · ' +
+        Object.keys(pendingBackup.answers).length +
+        ' 条练习</p>' +
+        action('apply-backup', '确认合并', '', 'primary');
+    } catch (err) {
+      box.textContent = err.message;
+    }
+  }
   if (e.target.id === 'use-source') studySources = e.target.checked;
   if (e.target.id === 'chat-engine') {
     data.engine = e.target.value;
@@ -735,7 +908,10 @@ document.addEventListener('submit', (e) => {
       title = document.querySelector('#note-title').value.trim(),
       text = document.querySelector('#note-text').value.trim();
     if (!title || !text) return;
-    data.notes = [{ id, title, text }, ...data.notes.filter((n) => n.id !== id)];
+    data.notes = [
+      { ...data.notes.find((n) => n.id === id), id, title, text },
+      ...data.notes.filter((n) => n.id !== id),
+    ];
     save();
     dialog.close();
     render();

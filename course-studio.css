@@ -1,0 +1,798 @@
+.classroom:has(.course-shell) {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+.course-shell {
+  display: grid;
+  grid-template-columns: clamp(170px, 13.5vw, 220px) minmax(0, 1fr);
+  min-height: calc(100dvh - 58px);
+}
+.class-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 21px 12px;
+  background: #f7f5fb;
+  border-right: 1px solid #e8e4f0;
+}
+.class-rail button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 12px;
+}
+.class-rail .active,
+.project-tabs .active,
+.review-queue .active,
+.pdf-toc .active {
+  color: #6239bb;
+  background: #eee8fc;
+  font-weight: 650;
+}
+.rail-base {
+  margin-top: auto;
+  padding-top: 32px;
+}
+.class-main {
+  min-width: 0;
+  padding: 15px clamp(18px, 2.3vw, 40px) 40px;
+}
+.class-context {
+  color: #827b93;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  margin-bottom: 8px;
+  font-size: 0.84rem;
+}
+.class-context span:nth-child(2) {
+  margin-left: auto;
+}
+.class-context button {
+  font-size: inherit;
+  padding: 2px 9px;
+}
+.project-head,
+.project-card footer,
+.project-pager,
+.work-actions,
+.review-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.project-head {
+  justify-content: space-between;
+  margin: 10px 0 17px;
+}
+.project-head h1,
+.project-head h2 {
+  margin: 0.1em 0;
+}
+.project-head p,
+.resume-card small {
+  color: #827b93;
+  margin: 0;
+}
+.project-head h1 {
+  font-size: 1.75rem;
+}
+.project-head > div:last-child {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.project-head > div:first-child {
+  display: block;
+}
+.project-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.project-filters input {
+  width: min(360px, 100%);
+}
+.project-filters select {
+  width: auto;
+}
+.project-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+.project-tabs button {
+  border-color: transparent;
+  background: transparent;
+}
+.project-tabs .active {
+  background: #eee8fc;
+}
+.scope-strip {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #eee9fa;
+  color: #605277;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.project-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin: 14px 0 20px;
+}
+.project-card,
+.asset-view,
+.review-queue,
+.class-reader {
+  border: 1px solid #e8e4f0;
+  background: #fff;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.project-card > div:last-child {
+  padding: 12px;
+}
+.project-card h3,
+.rights h3,
+.class-main .card h3 {
+  margin: 0.1em 0 0.55em;
+}
+.project-card p {
+  color: #655f71;
+  min-height: 2.7em;
+  margin: 0.45rem 0;
+}
+.project-cover {
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+  padding: 14px 19px;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+  color: white;
+}
+.project-cover span {
+  font:
+    600 clamp(16px, 1.5vw, 26px) / 1.35 'SimSun',
+    serif;
+}
+.project-cover small {
+  color: inherit;
+}
+.project-cover.c0 {
+  background-image:
+    linear-gradient(110deg, #47203def, #5c2133a8), url('./assets/course-art/cover-1.webp');
+}
+.project-cover.c1 {
+  background-image:
+    linear-gradient(110deg, #eee7faed, #cab8e580), url('./assets/course-art/cover-2.webp');
+  color: #403457;
+}
+.project-cover.c2 {
+  background-image:
+    linear-gradient(110deg, #f6eddfed, #eee0c4a6), url('./assets/course-art/cover-3.webp');
+  color: #473a3c;
+}
+.project-card footer small,
+.project-pager span {
+  margin-right: auto;
+}
+.heart,
+.text-link {
+  padding: 3px 6px;
+  background: transparent;
+  border: 0;
+  color: #6943bf;
+}
+.project-pager {
+  justify-content: flex-end;
+}
+.project-empty {
+  border: 1px dashed #dcd4e9;
+  border-radius: 9px;
+  padding: 36px 16px;
+  text-align: center;
+  color: #827b93;
+}
+.work-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 2.6fr) minmax(220px, 1fr);
+  gap: 16px;
+}
+.work-detail .card,
+.review-layout .card {
+  margin: 0 0 12px;
+  padding: 16px;
+}
+.asset-view {
+  margin-bottom: 12px;
+}
+.asset-view > .project-tabs {
+  padding: 0 10px;
+  border-bottom: 1px solid #e8e4f0;
+  margin: 0;
+}
+.asset-view > .project-tabs button {
+  padding: 12px 10px;
+  border-radius: 0;
+}
+.work-paper {
+  min-height: 210px;
+  padding: 30px;
+  background: #fbf9fc;
+}
+.work-paper p,
+.rights p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.asset-stage {
+  display: flex;
+  min-height: 200px;
+  padding: 12px;
+  gap: 12px;
+  background: #fcfbfd;
+}
+.asset-stage video {
+  display: block;
+  max-height: 360px;
+  width: 100%;
+  background: #201b29;
+}
+.thumbs {
+  width: 72px;
+  max-height: 350px;
+  overflow-y: auto;
+  flex: none;
+}
+.thumbs button {
+  display: block;
+  width: 100%;
+  padding: 2px;
+  margin-bottom: 5px;
+}
+.thumbs .active {
+  border-color: #7454d6;
+}
+.thumbs img,
+.slide-main img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.thumbs small {
+  font-size: 10px;
+}
+.slides {
+  min-width: 0;
+  flex: 1;
+}
+.slide-main {
+  min-height: 140px;
+  max-height: 49vh;
+  overflow: auto;
+  background: #f0edf3;
+}
+.slide-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.rights dl {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  font-size: 0.9rem;
+  gap: 5px;
+}
+.rights dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.rights hr {
+  border: 0;
+  border-top: 1px solid #e8e4f0;
+}
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.75fr) minmax(250px, 2.1fr) minmax(190px, 0.95fr);
+  gap: 14px;
+  align-items: start;
+}
+.review-queue {
+  padding: 9px;
+}
+.review-queue > button {
+  display: block;
+  text-align: left;
+  width: 100%;
+  border: 0;
+  padding: 10px;
+  background: white;
+}
+.review-queue small,
+.resume-card small {
+  display: block;
+}
+.review-buttons {
+  flex-wrap: wrap;
+}
+.review-buttons button {
+  flex: 1;
+}
+.project-steps {
+  display: flex;
+  justify-content: center;
+  gap: 6%;
+  padding: 14px;
+  background: #faf9fc;
+  list-style: none;
+}
+.project-steps li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #827b93;
+}
+.project-steps b {
+  border: 1px solid #cfc4e5;
+  border-radius: 50%;
+  width: 1.8em;
+  height: 1.8em;
+  display: grid;
+  place-items: center;
+}
+.project-steps .active {
+  color: #6239bb;
+}
+.project-steps .active b {
+  background: #7454d6;
+  color: #fff;
+}
+.project-pair,
+.materials-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.materials-grid {
+  grid-template-columns: minmax(0, 3fr) minmax(160px, 1fr);
+  align-items: start;
+}
+.permission {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 16px 0;
+}
+.permission input {
+  width: auto;
+}
+.work-actions {
+  justify-content: flex-end;
+}
+.file-label {
+  color: #633caa;
+}
+.resume-card {
+  padding: 15px 18px;
+  border: 1px solid #e2d9f6;
+  background: #f1edfa;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.resume-card button {
+  margin-left: auto;
+}
+.side-filter {
+  display: block;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 6px;
+}
+.table-scroll {
+  overflow: auto;
+}
+.class-reader {
+  padding: 12px;
+}
+.pdf-heading,
+.pdf-tools,
+.pdf-panel header {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pdf-heading {
+  padding: 4px 0 9px;
+}
+.pdf-tools {
+  border-top: 1px solid #e8e4f0;
+  border-bottom: 1px solid #e8e4f0;
+  padding: 8px 0;
+}
+.pdf-tools [type='search'] {
+  width: 150px;
+}
+.pdf-tools .page-number {
+  width: 4.5em;
+}
+.pdf-grid {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  align-items: start;
+}
+.with-panel .pdf-grid {
+  grid-template-columns: 130px minmax(0, 1fr) minmax(205px, 28%);
+}
+.pdf-toc,
+.pdf-panel {
+  padding: 10px;
+}
+.pdf-toc {
+  max-height: 70vh;
+  overflow: auto;
+}
+.pdf-toc button {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 4px;
+  border: 0;
+}
+.pdf-paper-scroll {
+  position: relative;
+  background: #eeeaf3;
+  padding: 14px;
+  overflow: auto;
+  max-height: 76vh;
+  min-height: 220px;
+}
+.paper-image {
+  position: relative;
+  margin: auto;
+  background: white;
+  box-shadow: 0 2px 7px #33294a26;
+}
+.paper-image canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  user-select: text;
+}
+.pdf-text-layer :is(span, br) {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  cursor: text;
+  transform-origin: 0 0;
+}
+.pdf-text-layer span {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--total-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x));
+}
+.pdf-text-layer ::selection {
+  background: #9674df65;
+  color: transparent;
+}
+.pdf-text-layer[data-main-rotation='90'] {
+  transform: rotate(90deg) translateY(-100%);
+}
+.pdf-text-layer[data-main-rotation='180'] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+.pdf-text-layer[data-main-rotation='270'] {
+  transform: rotate(270deg) translateX(-100%);
+}
+.selection-menu {
+  position: sticky;
+  bottom: 6px;
+  background: white;
+  border: 1px solid #ded2f1;
+  border-radius: 8px;
+  padding: 4px;
+  width: max-content;
+  margin: auto;
+}
+.selection-menu button {
+  color: #6542b4;
+}
+.pdf-panel header {
+  justify-content: space-between;
+}
+.pdf-panel label {
+  display: block;
+  margin: 8px 0;
+}
+.pdf-panel input,
+.pdf-panel textarea {
+  width: 100%;
+}
+.cite {
+  padding: 8px;
+  background: #f3effa;
+}
+.cite blockquote {
+  margin: 5px 0;
+}
+.reader-status {
+  font-size: 0.88rem;
+  color: #725b92;
+}
+.toggle-toc:not(.with-panel) .pdf-grid {
+  grid-template-columns: 1fr;
+}
+.toggle-toc .pdf-toc {
+  display: none;
+}
+#message:not(:empty) {
+  padding: 8px 14px;
+  z-index: 4;
+  background: #f2eaff;
+}
+@media (max-width: 960px) {
+  .review-layout {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+  .review-layout > aside {
+    grid-column: 2;
+  }
+  .project-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .work-detail {
+    grid-template-columns: minmax(0, 1.6fr) minmax(185px, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .course-shell {
+    display: block;
+  }
+  .class-rail {
+    flex-direction: row;
+    overflow: auto;
+    padding: 6px;
+    border: 0;
+    border-bottom: 1px solid #e8e4f0;
+  }
+  .class-rail button {
+    white-space: nowrap;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .class-rail .icon {
+    display: none;
+  }
+  .rail-base {
+    padding: 0;
+    margin: 0;
+  }
+  .class-main {
+    padding: 10px 12px 40px;
+  }
+  .project-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .project-cards,
+  .materials-grid,
+  .review-layout,
+  .work-detail,
+  .project-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .review-layout > aside {
+    grid-column: auto;
+  }
+  .review-queue {
+    max-height: 180px;
+    overflow: auto;
+  }
+  .project-head h1 {
+    font-size: 1.45rem;
+  }
+  .project-steps {
+    gap: 2%;
+    padding: 9px 2px;
+  }
+  .classroom .field input,
+  .classroom .field textarea {
+    max-width: 100%;
+  }
+  .pdf-grid,
+  .with-panel .pdf-grid,
+  .toggle-toc:not(.with-panel) .pdf-grid {
+    display: block;
+  }
+  .pdf-toc {
+    display: none;
+  }
+  .toggle-toc .pdf-toc {
+    display: block;
+    max-height: 155px;
+  }
+  .pdf-panel {
+    background: #fcfaff;
+    border-radius: 12px 12px 0 0;
+  }
+  .pdf-tools {
+    gap: 4px;
+  }
+  .pdf-tools button,
+  .pdf-tools input {
+    padding: 5px;
+  }
+  .pdf-tools [type='search'] {
+    width: 110px;
+  }
+  .class-reader {
+    padding: 6px;
+  }
+  .thumbs {
+    width: 48px;
+  }
+  .classroom .project-cover {
+    min-height: 106px;
+  }
+  .table-scroll th,
+  .table-scroll td {
+    white-space: normal;
+    min-width: 58px;
+  }
+  .table-scroll td button {
+    white-space: nowrap;
+  }
+  .project-pager {
+    gap: 8px;
+  }
+}
+
+.privacy-layout {
+  display: grid;
+  grid-template-columns: minmax(140px, 19%) minmax(0, 1fr);
+  gap: 18px;
+}
+.privacy-layout > aside {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  align-self: start;
+}
+.privacy-layout > aside > * {
+  display: block;
+  padding: 8px;
+}
+.privacy-layout > aside strong {
+  background: var(--tint);
+  color: var(--deep);
+}
+.privacy-layout .card {
+  margin-bottom: 12px;
+}
+.privacy-row {
+  display: grid;
+  grid-template-columns: 140px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 9px 0;
+}
+.privacy-sources {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.privacy-sources p {
+  background: var(--wash);
+  padding: 12px;
+  border-radius: 8px;
+}
+.privacy-page h3 {
+  margin-top: 0;
+}
+@media (max-width: 760px) {
+  .privacy-layout,
+  .privacy-sources {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .privacy-row {
+    grid-template-columns: auto auto;
+  }
+  .privacy-row small {
+    grid-column: 1/-1;
+  }
+  .privacy-layout > aside {
+    display: none;
+  }
+  .materials-grid .card {
+    min-width: 0;
+  }
+}
+
+.asset-stage .slides {
+  display: block;
+  min-width: 0;
+}
+.slide-tools span {
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  body:has(.class-reader) > .top,
+  .course-shell:has(.class-reader) > .class-rail,
+  .class-main:has(.class-reader) > .class-context,
+  .class-main:has(.class-reader) > .project-head > div:first-child {
+    display: none;
+  }
+  .class-main:has(.class-reader) {
+    padding: 5px;
+  }
+  .class-main:has(.class-reader) > .project-head {
+    margin: 0 0 5px;
+  }
+  .class-main:has(.class-reader) > .project-head button {
+    padding: 4px 8px;
+  }
+  .pdf-panel {
+    max-height: 44dvh;
+    overflow: auto;
+  }
+  .with-panel .pdf-paper-scroll {
+    max-height: 45dvh;
+    min-height: 150px;
+  }
+  .class-reader .pdf-panel header h3 {
+    margin: 0.2em 0;
+  }
+  .pdf-toc button {
+    padding: 5px;
+  }
+  .thumbs + .slides .slide-main img {
+    max-width: none;
+  }
+}
+
+.project-cover.has-cover {
+  padding: 0;
+  display: block;
+  min-height: 0;
+  background: #f2eff5;
+}
+.uploaded-cover {
+  width: 100%;
+  aspect-ratio: 2.7;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 48%;
+}
