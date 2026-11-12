@@ -195,6 +195,7 @@ function render() {
     '</span><span>' +
     (isTeacher() ? '教师' : '学生') +
     '</span>' +
+    (isTeacher()?'<span class="course-invite">邀请码 <strong>'+h(room.invite)+'</strong></span>'+b('invite','复制入班链接'):'')+
     b('refresh', '刷新') +
     '</div>' +
     {
@@ -332,8 +333,8 @@ document.addEventListener('submit', async (e) => {
     }
     if (op === 'create' || op === 'join') {
       body.stats=body.stats==='on';const a = await api(op, body);
-      await login.link(a.token);
-      remember(a);
+      const linked=await login.link(a.token);
+      remember(linked?await login.choose(linked):a);
       if (!['materials', 'works'].includes(tab)) tab = 'overview';
       history.replaceState({}, '', location.pathname + '#' + tab);
       await refresh();

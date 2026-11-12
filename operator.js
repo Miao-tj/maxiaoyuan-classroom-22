@@ -24,6 +24,7 @@ const rightsList = [
 ];
 const roles = { student: '学生', teacher: '教师', admin: '管理员' };
 const providers = {
+  compatible:'自定义兼容接口',
   auto: '跟随部署配置',
   deepseek: 'DeepSeek',
   shared: '共享推理服务',
@@ -181,7 +182,7 @@ const probeStatus = (p) =>
 function providerForm() {
   const m = draft.mappings.find((m) => m.id === activeModel);
   const p = m && lastProbe(m);
-  return `<section class="op-card"><h2>服务商连接</h2>${m ? '<p>当前映射 · ' + h(m.label || m.model || '新模型') + '</p>' : ''}${input('服务商', 'provider', `<select data-map="provider" data-id="${h(activeModel)}" ${m ? '' : 'disabled'}>${opts(providers, m?.provider || 'auto')}</select>`)}${input('Base URL', 'host', `<output class="op-output">${h(data.provider?.host || '由服务端部署提供')}</output>`)}${input('API Key', 'key', `<div class="op-key">${changingKey ? '<input type="password" autocomplete="new-password" id="op-new-key" placeholder="输入新的服务端密钥">' : `<output class="op-output">${draft.hasKey || data.configured ? '••••••••••••••••' : '尚未配置独立密钥'}</output>`}${btn('key', changingKey ? '取消' : '更换密钥', 'op-outline')}</div>`)}<small class="op-hint">密钥仅在服务端保存，前端不返回明文。</small><div class="op-test-line"><b>测试结果</b> ${probeStatus(p)}${btn('probe', '测试连接', 'op-outline')}</div><div class="op-note">连接状态以已保存配置的实际测试为准。</div></section>`;
+  return `<section class="op-card"><h2>服务商连接</h2>${m ? '<p>当前映射 · ' + h(m.label || m.model || '新模型') + '</p>' : ''}${input('服务商', 'provider', `<select data-map="provider" data-id="${h(activeModel)}" ${m ? '' : 'disabled'}>${opts(providers, m?.provider || 'auto')}</select>`)}${input('Base URL', 'host', m?.provider==='compatible'?`<input type="url" data-map="base" data-id="${h(m.id)}" value="${h(m.base||'')}" placeholder="输入服务商地址">`:`<output class="op-output">${h(({deepseek:'https://api.deepseek.com',local:'http://127.0.0.1:8824/v1',shared:'Hugging Face · Gemma',auto:data.provider?.host})[m?.provider]||'由服务端提供')}</output>`)}${input('API Key', 'key', `<div class="op-key">${changingKey ? '<input type="password" autocomplete="new-password" id="op-new-key" placeholder="输入新的服务端密钥">' : `<output class="op-output">${(m?.provider==='compatible'?draft.configuredBases?.includes(m.base):draft.hasKey || data.configured) ? '••••••••••••••••' : '尚未配置独立密钥'}</output>`}${btn('key', changingKey ? '取消' : '更换密钥', 'op-outline')}</div>`)}<small class="op-hint">密钥仅在服务端保存，前端不返回明文。</small><div class="op-test-line"><b>测试结果</b> ${probeStatus(p)}${btn('probe', '测试连接', 'op-outline')}</div><div class="op-note">连接状态以已保存配置的实际测试为准。</div></section>`;
 }
 function limitCard(keys, title) {
   return `<section class="op-card"><h2>${title}</h2>${keys
@@ -587,6 +588,7 @@ function normalizeModels() {
       label: m.label.trim(),
       model: m.model.trim(),
       provider: m.provider,
+      ...(m.provider==='compatible'?{base:m.base||''}:{}),
     })),
     defaultId: draft.defaultId,
   };
@@ -893,7 +895,7 @@ root.addEventListener('click', async (e) => {
       const models = normalizeModels();
       if (changingKey && !newKey.trim()) throw Error('请填写新密钥，或取消更换密钥。');
       await exclusive(async () => {
-        await api('model-save', { models, ...(changingKey ? { key: newKey.trim() } : {}) });
+        await api('model-save', { models, ...(changingKey ? { key: newKey.trim(),keyFor:activeModel } : {}) });
         newKey = '';
         changingKey = false;
         await refreshed(true);

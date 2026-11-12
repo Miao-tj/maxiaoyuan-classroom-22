@@ -6,7 +6,7 @@ if(cb&&/^[a-f0-9]{32}$/.test(cb)){auth=cb;sessionStorage.setItem(sessionKey,cb);
 const act=(id,label,cls='')=>'<button type="button" class="'+cls+'" data-account="'+id+'">'+label+'</button>';
 const field=(title,name,type='text',length=100)=>'<label class="field">'+title+'<input name="'+name+'" type="'+type+'" maxlength="'+length+'" required autocomplete="'+(name==='password'?(mode==='login'?'current-password':'new-password'):name==='name'?'username':'off')+'"></label>';
 export function createLogin(ctx){
- async function request(op,body={}){const r=await fetch('./api/account/'+op,{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth}:{})},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw Error(j.error||'操作未完成');return j;}
+ async function request(op,body={}){const r=await fetch('./api/account/'+op,{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+auth}:{})},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw Object.assign(Error(j.error||'操作未完成'),{status:r.status});return j;}
  function panel(){
   if(auth&&profile)return '<section class="card identity-card"><h2>选择课程</h2><p>已登录 · '+h(profile.name.startsWith('sso:')?'学校账号':profile.name)+'</p>'+profile.memberships.map(m=>'<button data-account="choose" data-id="'+h(m.id)+'">'+h(m.title)+' · '+(m.role==='teacher'?'教师':'学生')+'　→</button>').join(' ')+
    (!profile.memberships.length?'<p>可使用下方的邀请码加入课程，或绑定已有课程访问码。</p>':'')+
@@ -14,8 +14,8 @@ export function createLogin(ctx){
   return '<section class="card identity-card"><h2>'+({login:'登录马小原',register:'创建账号',recover:'找回密码','otp-login':'动态验证码登录'}[mode])+'</h2><nav class="project-tabs">'+act('login','密码登录',mode==='login'?'active':'')+act('otp-login','验证码登录',mode==='otp-login'?'active':'')+'</nav><form data-auth="'+mode+'">'+field('账号','name','text',60)+(mode==='recover'?field('注册时保存的恢复码','recovery','text',64):'')+(mode==='otp-login'?field('身份验证器六位验证码','otp','text',6):field(mode==='recover'?'新密码':'密码','password','password',180)+act('show-password','显示密码','password-eye'))+
    '<label class="permission"><input name="remember" type="checkbox"> 在这台设备记住登录状态</label><button class="primary">'+(mode==='register'?'注册并进入':mode==='recover'?'重设密码':'登录')+'</button></form><nav>'+act('register','注册账号')+' '+act('recover','忘记密码')+' '+act('sso','学校统一认证')+'</nav><small>新账号可以通过课程邀请码加入。<a href="./#settings">查看隐私与数据</a></small></section>';
  }
- async function init(){try{school=(await (await fetch('./api/account/methods')).json()).school;if(auth){profile=await request('me');ctx.reentry();}}catch{if(auth){storage().removeItem(sessionKey);auth='';profile=null;ctx.reentry();}}}
- async function link(credential){if(!auth)return;await request('link',{credential});profile=await request('me');}
+ async function init(){try{school=(await (await fetch('./api/account/methods')).json()).school;if(auth){profile=await request('me');ctx.reentry();}}catch(e){if(auth&&[401,403].includes(e.status)){storage().removeItem(sessionKey);auth='';profile=null;ctx.reentry();}}}
+ async function link(credential){if(!auth)return;const linked=await request('link',{credential});profile=await request('me');return linked.id;}
  async function click(btn){
   const op=btn.dataset.account;
   if(op==='show-password'){const input=btn.closest('form').elements.password;input.type=input.type==='password'?'text':'password';btn.textContent=input.type==='password'?'显示密码':'隐藏密码';return;}
@@ -31,6 +31,6 @@ export function createLogin(ctx){
   remember=data.remember==='on';const result=await request(op,{...data,remember});auth=result.session;localStorage.removeItem(sessionKey);sessionStorage.removeItem(sessionKey);(remember?localStorage:sessionStorage).setItem(sessionKey,auth);profile=result;ctx.reentry();
   if(result.recovery)ctx.pop('保存账号恢复码','<p>忘记密码时可用此码重设。请妥善保存。</p><code>'+h(result.recovery)+'</code>');
  }
- return {panel,init,click,submit,link,logged:()=>!!profile};
+ return {panel,init,click,submit,link,choose:id=>request('choose',{id}),logged:()=>!!profile};
 }
 
